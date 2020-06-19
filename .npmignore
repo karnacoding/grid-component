@@ -3,7 +3,6 @@ __mocks__
 .vscode
 coverage
 stories
-!dist
 .babelrc
 .eslintignore
 .eslintrc.json
