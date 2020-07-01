@@ -103,6 +103,7 @@ const DataTable = memo(({
   theme,
   customStyles,
   direction,
+  onChange,
 }) => {
   const initialState = {
     allSelected: false,
@@ -414,6 +415,7 @@ const DataTable = memo(({
                         conditionalRowStyles={conditionalRowStyles}
                         selected={selected}
                         selectableRowsHighlight={selectableRowsHighlight}
+                        onChange={onChange}
                       />
                     );
                   })}

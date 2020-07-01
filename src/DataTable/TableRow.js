@@ -60,6 +60,7 @@ const TableRow = memo(({
   onRowExpandToggled,
   selected,
   selectableRowsHighlight,
+  changeState,
 }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
   useEffect(() => {
@@ -135,6 +136,7 @@ const TableRow = memo(({
             key={`cell-${column.id}-${row[keyField]}`}
             column={column}
             row={row}
+            changeState={changeState}
           />
         ))}
       </TableRowStyle>
@@ -144,6 +146,7 @@ const TableRow = memo(({
           key={`expander--${row[keyField]}`}
           data={row}
           extendedRowStyle={inheritStyles}
+          changeState={changeState}
         >
           {expandableRowsComponent}
         </ExpanderRow>
