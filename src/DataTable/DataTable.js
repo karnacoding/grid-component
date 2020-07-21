@@ -140,7 +140,7 @@ const DataTable = memo(({
   const expandableRowsComponentMemo = useMemo(() => expandableRowsComponent, [expandableRowsComponent]);
   const wrapperProps = useMemo(() => ({ ...direction !== 'auto' && ({ dir: direction }) }), [direction]);
   const handleRowClicked = useCallback((row, e) => onRowClicked(row, e), [onRowClicked]);
-  const onDragEvt = useCallback((row, e, info) => onDrag(row, e, info), [onDrag]);
+  const onDragEvt = useCallback((row, e) => onDrag(row, e), [onDrag]);
   const onDropEvt = useCallback((row, e) => onDrop(row, e), [onDrop]);
   // const onDragOverEvt = useCallback((row, e) => onDragOver(row, e), [onDragOver]);
   const onDragEndEvt = useCallback((row, e, info) => onDragEnd(row, e, info), [onDragEnd]);

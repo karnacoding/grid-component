@@ -12473,9 +12473,9 @@ var TableRow = React.memo(function (_ref) {
       }
     }
   }, [defaultExpanderDisabled, expandOnRowDoubleClicked, expandableRows, handleExpanded, onRowDoubleClicked, row]);
-  var onDragEvt = React.useCallback(function (e, info) {
-    onDrag(row, e, info);
-  }, [draggable, row]);
+  var onDragEvt = React.useCallback(function (e) {
+    onDrag(row, e);
+  }, [draggable]);
   var onDragEndEvt = React.useCallback(function (e, info) {
     onDragEnd(row, e, info);
   }, [draggable]);
@@ -14276,8 +14276,8 @@ var DataTable = React.memo(function (_ref) {
   var handleRowClicked = React.useCallback(function (row, e) {
     return onRowClicked(row, e);
   }, [onRowClicked]);
-  var onDragEvt = React.useCallback(function (row, e, info) {
-    return onDrag(row, e, info);
+  var onDragEvt = React.useCallback(function (row, e) {
+    return onDrag(row, e);
   }, [onDrag]);
   var onDropEvt = React.useCallback(function (row, e) {
     return onDrop(row, e);

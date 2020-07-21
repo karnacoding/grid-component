@@ -97,9 +97,9 @@ const TableRow = memo(({
     }
   }, [defaultExpanderDisabled, expandOnRowDoubleClicked, expandableRows, handleExpanded, onRowDoubleClicked, row]);
 
-  const onDragEvt = useCallback((e, info) => {
-    onDrag(row, e, info);
-  }, [draggable, row]);
+  const onDragEvt = useCallback(e => {
+    onDrag(row, e);
+  }, [draggable]);
 
   const onDragEndEvt = useCallback((e, info) => {
     onDragEnd(row, e, info);
