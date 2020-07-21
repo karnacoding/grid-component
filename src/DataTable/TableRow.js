@@ -42,6 +42,9 @@ const TableRow = memo(({
   columns,
   row,
   onRowClicked,
+  onDragStart,
+  onDragOver,
+  onDrop,
   onRowDoubleClicked,
   selectableRows,
   expandableRows,
@@ -49,6 +52,7 @@ const TableRow = memo(({
   highlightOnHover,
   pointerOnHover,
   dense,
+  draggable,
   expandableRowsComponent,
   defaultExpanderDisabled,
   defaultExpanded,
@@ -93,6 +97,18 @@ const TableRow = memo(({
     }
   }, [defaultExpanderDisabled, expandOnRowDoubleClicked, expandableRows, handleExpanded, onRowDoubleClicked, row]);
 
+  const onDragStartEvt = useCallback(e => {
+    onDragStart(row, e);
+  }, [draggable, row]);
+
+  const onDragOverEvt = useCallback(e => {
+    onDragOver(row, e);
+  }, [draggable]);
+
+  const onDropEvt = useCallback(e => {
+    onDrop(row, e);
+  }, [draggable, row]);
+
   const extendedRowStyle = getConditionalStyle(row, conditionalRowStyles);
   const hightlightSelected = selectableRowsHighlight && selected;
   const inheritStyles = inheritConditionalStyles ? extendedRowStyle : null;
@@ -106,8 +122,12 @@ const TableRow = memo(({
         highlightOnHover={highlightOnHover}
         pointerOnHover={!defaultExpanderDisabled && showPointer}
         dense={dense}
+        draggable={draggable}
         onClick={handleRowClick}
         onDoubleClick={handleRowDoubleClick}
+        onDragStart={onDragStartEvt}
+        onDragOver={onDragOverEvt}
+        onDrop={onDropEvt}
         className="rdt_TableRow"
         extendedRowStyle={extendedRowStyle}
         selected={hightlightSelected}
@@ -158,6 +178,9 @@ TableRow.propTypes = {
   columns: PropTypes.array.isRequired,
   row: PropTypes.object.isRequired,
   onRowClicked: PropTypes.func.isRequired,
+  onDragStart: PropTypes.func.isRequired,
+  onDragOver: PropTypes.func.isRequired,
+  onDrop: PropTypes.func.isRequired,
   onRowDoubleClicked: PropTypes.func.isRequired,
   onRowExpandToggled: PropTypes.func.isRequired,
   defaultExpanded: PropTypes.bool,
@@ -168,6 +191,7 @@ TableRow.propTypes = {
   highlightOnHover: PropTypes.bool.isRequired,
   pointerOnHover: PropTypes.bool.isRequired,
   dense: PropTypes.bool.isRequired,
+  draggable: PropTypes.bool.isRequired,
   expandableRowsComponent: PropTypes.oneOfType([
     PropTypes.arrayOf(PropTypes.node),
     PropTypes.node,

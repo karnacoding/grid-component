@@ -130,6 +130,10 @@ const ConditionalCellStyle = () => (
     columns={columns}
     data={tableDataItems}
     subHeader={true}
+    draggable={true}
+    onDragStart={() => console.log("start")}
+    onDragOver={() => console.log("going")}
+    onDrop={(e) => { e.stopPropagtion(); console.log("end") }}
   />
 );
 

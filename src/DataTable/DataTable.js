@@ -33,6 +33,7 @@ const DataTable = memo(({
   highlightOnHover,
   pointerOnHover,
   dense,
+  draggable,
   selectableRows,
   selectableRowsHighlight,
   selectableRowsNoSelectAll,
@@ -84,6 +85,9 @@ const DataTable = memo(({
   contextComponent,
   expandableRows,
   onRowClicked,
+  onDragStart,
+  onDragOver,
+  onDrop,
   onRowDoubleClicked,
   sortIcon,
   onSort,
@@ -135,6 +139,9 @@ const DataTable = memo(({
   const expandableRowsComponentMemo = useMemo(() => expandableRowsComponent, [expandableRowsComponent]);
   const wrapperProps = useMemo(() => ({ ...direction !== 'auto' && ({ dir: direction }) }), [direction]);
   const handleRowClicked = useCallback((row, e) => onRowClicked(row, e), [onRowClicked]);
+  const onDragStartEvt = useCallback((row, e) => onDragStart(row, e), [onDragStart]);
+  const onDropEvt = useCallback((row, e) => onDrop(row, e), [onDrop]);
+  const onDragOverEvt = useCallback((row, e) => onDragOver(row, e), [onDragOver]);
   const handleRowDoubleClicked = useCallback((row, e) => onRowDoubleClicked(row, e), [onRowDoubleClicked]);
   const handleChangePage = page => dispatch({
     type: 'CHANGE_PAGE',
@@ -411,11 +418,15 @@ const DataTable = memo(({
                         defaultExpanded={expanderExpander}
                         inheritConditionalStyles={expandableInheritConditionalStyles}
                         onRowClicked={handleRowClicked}
+                        onDragStart={onDragStartEvt}
+                        onDragOver={onDragOverEvt}
+                        onDrop={onDropEvt}
                         onRowDoubleClicked={handleRowDoubleClicked}
                         conditionalRowStyles={conditionalRowStyles}
                         selected={selected}
                         selectableRowsHighlight={selectableRowsHighlight}
                         onChange={onChange}
+                        draggable={draggable}
                       />
                     );
                   })}
