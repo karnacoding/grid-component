@@ -99,7 +99,7 @@ const TableRow = memo(({
 
   const onDragEvt = useCallback(e => {
     onDrag(row, e);
-  }, [draggable]);
+  }, [draggable, row]);
 
   const onDragEndEvt = useCallback((e, info) => {
     onDragEnd(row, e, info);
@@ -111,50 +111,49 @@ const TableRow = memo(({
 
   return (
     <>
-      <div id={`row-${id}`} draggable={draggable}>
-        <TableRowStyle
-          id={`row-${id}`}
-          role="row"
-          striped={striped}
-          highlightOnHover={highlightOnHover}
-          pointerOnHover={!defaultExpanderDisabled && showPointer}
-          dense={dense}
-          drag={draggable}
-          onClick={handleRowClick}
-          onDoubleClick={handleRowDoubleClick}
-          onDrag={onDragEvt}
-          onDragEnd={onDragEndEvt}
-          className="rdt_TableRow"
-          extendedRowStyle={extendedRowStyle}
-          selected={hightlightSelected}
-        >
-          {selectableRows && (
-            <TableCellCheckbox
-              name={`select-row-${row[keyField]}`}
-              row={row}
-              selected={selected}
-            />
-          )}
+      <TableRowStyle
+        id={`row-${id}`}
+        role="row"
+        striped={striped}
+        highlightOnHover={highlightOnHover}
+        pointerOnHover={!defaultExpanderDisabled && showPointer}
+        dense={dense}
+        drag={draggable}
+        onClick={handleRowClick}
+        onDoubleClick={handleRowDoubleClick}
+        draggable={draggable}
+        onDrag={onDragEvt}
+        onDragEnd={onDragEndEvt}
+        className="rdt_TableRow"
+        extendedRowStyle={extendedRowStyle}
+        selected={hightlightSelected}
+      >
+        {selectableRows && (
+          <TableCellCheckbox
+            name={`select-row-${row[keyField]}`}
+            row={row}
+            selected={selected}
+          />
+        )}
 
-          {expandableRows && !expandableRowsHideExpander && (
-            <TableCellExpander
-              expanded={expanded}
-              row={row}
-              onRowExpandToggled={handleExpanded}
-              disabled={defaultExpanderDisabled}
-            />
-          )}
+        {expandableRows && !expandableRowsHideExpander && (
+          <TableCellExpander
+            expanded={expanded}
+            row={row}
+            onRowExpandToggled={handleExpanded}
+            disabled={defaultExpanderDisabled}
+          />
+        )}
 
-          {columns.map(column => (
-            <TableCell
-              id={`cell-${column.id}-${row[keyField]}`}
-              key={`cell-${column.id}-${row[keyField]}`}
-              column={column}
-              row={row}
-            />
-          ))}
-        </TableRowStyle>
-      </div>
+        {columns.map(column => (
+          <TableCell
+            id={`cell-${column.id}-${row[keyField]}`}
+            key={`cell-${column.id}-${row[keyField]}`}
+            column={column}
+            row={row}
+          />
+        ))}
+      </TableRowStyle>
 
       {expandableRows && expanded && (
         <ExpanderRow

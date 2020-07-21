@@ -12475,17 +12475,14 @@ var TableRow = React.memo(function (_ref) {
   }, [defaultExpanderDisabled, expandOnRowDoubleClicked, expandableRows, handleExpanded, onRowDoubleClicked, row]);
   var onDragEvt = React.useCallback(function (e) {
     onDrag(row, e);
-  }, [draggable]);
+  }, [draggable, row]);
   var onDragEndEvt = React.useCallback(function (e, info) {
     onDragEnd(row, e, info);
   }, [draggable]);
   var extendedRowStyle = getConditionalStyle(row, conditionalRowStyles);
   var hightlightSelected = selectableRowsHighlight && selected;
   var inheritStyles = inheritConditionalStyles ? extendedRowStyle : null;
-  return /*#__PURE__*/React__default.createElement(React__default.Fragment, null, /*#__PURE__*/React__default.createElement("div", {
-    id: "row-".concat(id),
-    draggable: draggable
-  }, /*#__PURE__*/React__default.createElement(TableRowStyle, {
+  return /*#__PURE__*/React__default.createElement(React__default.Fragment, null, /*#__PURE__*/React__default.createElement(TableRowStyle, {
     id: "row-".concat(id),
     role: "row",
     striped: striped,
@@ -12495,6 +12492,7 @@ var TableRow = React.memo(function (_ref) {
     drag: draggable,
     onClick: handleRowClick,
     onDoubleClick: handleRowDoubleClick,
+    draggable: draggable,
     onDrag: onDragEvt,
     onDragEnd: onDragEndEvt,
     className: "rdt_TableRow",
@@ -12516,7 +12514,7 @@ var TableRow = React.memo(function (_ref) {
       column: column,
       row: row
     });
-  }))), expandableRows && expanded && /*#__PURE__*/React__default.createElement(ExpanderRow, {
+  })), expandableRows && expanded && /*#__PURE__*/React__default.createElement(ExpanderRow, {
     key: "expander--".concat(row[keyField]),
     data: row,
     extendedRowStyle: inheritStyles
