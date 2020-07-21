@@ -129,6 +129,7 @@ const ConditionalCellStyle = () => (
     title="Desserts - Conditional Cells"
     columns={columns}
     data={tableDataItems}
+    subHeader={true}
   />
 );
 
