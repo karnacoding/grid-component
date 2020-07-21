@@ -313,15 +313,6 @@ const DataTable = memo(({
             />
           )}
 
-          {subHeader && (
-            <TableSubheader
-              align={subHeaderAlign}
-              wrapContent={subHeaderWrap}
-            >
-              {subHeaderComponent}
-            </TableSubheader>
-          )}
-
           <TableWrapper>
             {progressPending && !persistTableHead && (
               <ProgressWrapper>
@@ -367,6 +358,15 @@ const DataTable = memo(({
                 <ProgressWrapper>
                   {progressComponent}
                 </ProgressWrapper>
+              )}
+
+              {subHeader && (
+                <TableSubheader
+                  align={subHeaderAlign}
+                  wrapContent={subHeaderWrap}
+                >
+                  {subHeaderComponent}
+                </TableSubheader>
               )}
 
               {!progressPending && data.length > 0 && (
