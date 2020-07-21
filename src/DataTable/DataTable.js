@@ -85,9 +85,10 @@ const DataTable = memo(({
   contextComponent,
   expandableRows,
   onRowClicked,
-  onDragStart,
-  onDragOver,
+  onDrag,
+  onDragEnd,
   onDrop,
+  // onDragOver,
   onRowDoubleClicked,
   sortIcon,
   onSort,
@@ -139,9 +140,10 @@ const DataTable = memo(({
   const expandableRowsComponentMemo = useMemo(() => expandableRowsComponent, [expandableRowsComponent]);
   const wrapperProps = useMemo(() => ({ ...direction !== 'auto' && ({ dir: direction }) }), [direction]);
   const handleRowClicked = useCallback((row, e) => onRowClicked(row, e), [onRowClicked]);
-  const onDragStartEvt = useCallback((row, e) => onDragStart(row, e), [onDragStart]);
+  const onDragEvt = useCallback((row, e, info) => onDrag(row, e, info), [onDrag]);
   const onDropEvt = useCallback((row, e) => onDrop(row, e), [onDrop]);
-  const onDragOverEvt = useCallback((row, e) => onDragOver(row, e), [onDragOver]);
+  // const onDragOverEvt = useCallback((row, e) => onDragOver(row, e), [onDragOver]);
+  const onDragEndEvt = useCallback((row, e, info) => onDragEnd(row, e, info), [onDragEnd]);
   const handleRowDoubleClicked = useCallback((row, e) => onRowDoubleClicked(row, e), [onRowDoubleClicked]);
   const handleChangePage = page => dispatch({
     type: 'CHANGE_PAGE',
@@ -371,6 +373,7 @@ const DataTable = memo(({
                 <TableSubheader
                   align={subHeaderAlign}
                   wrapContent={subHeaderWrap}
+                  onDrop={onDropEvt}
                 >
                   {subHeaderComponent}
                 </TableSubheader>
@@ -418,9 +421,8 @@ const DataTable = memo(({
                         defaultExpanded={expanderExpander}
                         inheritConditionalStyles={expandableInheritConditionalStyles}
                         onRowClicked={handleRowClicked}
-                        onDragStart={onDragStartEvt}
-                        onDragOver={onDragOverEvt}
-                        onDrop={onDropEvt}
+                        onDrag={onDragEvt}
+                        onDragEnd={onDragEndEvt}
                         onRowDoubleClicked={handleRowDoubleClicked}
                         conditionalRowStyles={conditionalRowStyles}
                         selected={selected}

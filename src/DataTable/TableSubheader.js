@@ -21,8 +21,8 @@ const SubheaderWrapper = styled.header`
   ${props => props.theme.subHeader.style}
 `;
 
-const TableSubheader = ({ align, wrapContent, children }) => (
-  <SubheaderWrapper align={align} wrapContent={wrapContent}>
+const TableSubheader = ({ align, wrapContent, onDrop, children }) => (
+  <SubheaderWrapper align={align} wrapContent={wrapContent} onDragOver={e => e.preventDefault()} onDrop={onDrop} className="dropTarget">
     {children}
   </SubheaderWrapper>
 );
@@ -35,6 +35,7 @@ TableSubheader.propTypes = {
   ]),
   align: PropTypes.oneOf(['center', 'left', 'right']),
   wrapContent: PropTypes.bool,
+  onDrop: PropTypes.func.isRequired,
 };
 
 TableSubheader.defaultProps = {

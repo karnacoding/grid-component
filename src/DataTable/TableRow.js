@@ -1,4 +1,5 @@
 import React, { memo, useCallback, useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
 import styled, { css } from 'styled-components';
 import TableCell from './TableCell';
@@ -21,7 +22,7 @@ const pointerCSS = css`
   }
 `;
 
-const TableRowStyle = styled.div`
+const TableRowStyle = styled(motion.div)`
   display: flex;
   align-items: stretch;
   align-content: stretch;
@@ -42,9 +43,8 @@ const TableRow = memo(({
   columns,
   row,
   onRowClicked,
-  onDragStart,
-  onDragOver,
-  onDrop,
+  onDrag,
+  onDragEnd,
   onRowDoubleClicked,
   selectableRows,
   expandableRows,
@@ -97,17 +97,13 @@ const TableRow = memo(({
     }
   }, [defaultExpanderDisabled, expandOnRowDoubleClicked, expandableRows, handleExpanded, onRowDoubleClicked, row]);
 
-  const onDragStartEvt = useCallback(e => {
-    onDragStart(row, e);
+  const onDragEvt = useCallback((e, info) => {
+    onDrag(row, e, info);
   }, [draggable, row]);
 
-  const onDragOverEvt = useCallback(e => {
-    onDragOver(row, e);
+  const onDragEndEvt = useCallback((e, info) => {
+    onDragEnd(row, e, info);
   }, [draggable]);
-
-  const onDropEvt = useCallback(e => {
-    onDrop(row, e);
-  }, [draggable, row]);
 
   const extendedRowStyle = getConditionalStyle(row, conditionalRowStyles);
   const hightlightSelected = selectableRowsHighlight && selected;
@@ -115,49 +111,50 @@ const TableRow = memo(({
 
   return (
     <>
-      <TableRowStyle
-        id={`row-${id}`}
-        role="row"
-        striped={striped}
-        highlightOnHover={highlightOnHover}
-        pointerOnHover={!defaultExpanderDisabled && showPointer}
-        dense={dense}
-        draggable={draggable}
-        onClick={handleRowClick}
-        onDoubleClick={handleRowDoubleClick}
-        onDragStart={onDragStartEvt}
-        onDragOver={onDragOverEvt}
-        onDrop={onDropEvt}
-        className="rdt_TableRow"
-        extendedRowStyle={extendedRowStyle}
-        selected={hightlightSelected}
-      >
-        {selectableRows && (
-          <TableCellCheckbox
-            name={`select-row-${row[keyField]}`}
-            row={row}
-            selected={selected}
-          />
-        )}
+      <div id={`row-${id}`} draggable={draggable}>
+        <TableRowStyle
+          id={`row-${id}`}
+          role="row"
+          striped={striped}
+          highlightOnHover={highlightOnHover}
+          pointerOnHover={!defaultExpanderDisabled && showPointer}
+          dense={dense}
+          drag={draggable}
+          onClick={handleRowClick}
+          onDoubleClick={handleRowDoubleClick}
+          onDrag={onDragEvt}
+          onDragEnd={onDragEndEvt}
+          className="rdt_TableRow"
+          extendedRowStyle={extendedRowStyle}
+          selected={hightlightSelected}
+        >
+          {selectableRows && (
+            <TableCellCheckbox
+              name={`select-row-${row[keyField]}`}
+              row={row}
+              selected={selected}
+            />
+          )}
 
-        {expandableRows && !expandableRowsHideExpander && (
-          <TableCellExpander
-            expanded={expanded}
-            row={row}
-            onRowExpandToggled={handleExpanded}
-            disabled={defaultExpanderDisabled}
-          />
-        )}
+          {expandableRows && !expandableRowsHideExpander && (
+            <TableCellExpander
+              expanded={expanded}
+              row={row}
+              onRowExpandToggled={handleExpanded}
+              disabled={defaultExpanderDisabled}
+            />
+          )}
 
-        {columns.map(column => (
-          <TableCell
-            id={`cell-${column.id}-${row[keyField]}`}
-            key={`cell-${column.id}-${row[keyField]}`}
-            column={column}
-            row={row}
-          />
-        ))}
-      </TableRowStyle>
+          {columns.map(column => (
+            <TableCell
+              id={`cell-${column.id}-${row[keyField]}`}
+              key={`cell-${column.id}-${row[keyField]}`}
+              column={column}
+              row={row}
+            />
+          ))}
+        </TableRowStyle>
+      </div>
 
       {expandableRows && expanded && (
         <ExpanderRow
@@ -178,9 +175,8 @@ TableRow.propTypes = {
   columns: PropTypes.array.isRequired,
   row: PropTypes.object.isRequired,
   onRowClicked: PropTypes.func.isRequired,
-  onDragStart: PropTypes.func.isRequired,
-  onDragOver: PropTypes.func.isRequired,
-  onDrop: PropTypes.func.isRequired,
+  onDrag: PropTypes.func.isRequired,
+  onDragEnd: PropTypes.func.isRequired,
   onRowDoubleClicked: PropTypes.func.isRequired,
   onRowExpandToggled: PropTypes.func.isRequired,
   defaultExpanded: PropTypes.bool,
