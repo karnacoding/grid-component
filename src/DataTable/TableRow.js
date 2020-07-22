@@ -121,9 +121,8 @@ const TableRow = memo(({
         drag={draggable}
         dragConstraints={
           {
-            left: 0,
+            left: -400,
             right: 0,
-            top: 0,
             bottom: 0,
           }
         }

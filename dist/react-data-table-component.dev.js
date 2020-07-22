@@ -12491,9 +12491,8 @@ var TableRow = React.memo(function (_ref) {
     dense: dense,
     drag: draggable,
     dragConstraints: {
-      left: 0,
+      left: -400,
       right: 0,
-      top: 0,
       bottom: 0
     },
     onClick: handleRowClick,
