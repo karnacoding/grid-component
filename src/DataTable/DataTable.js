@@ -298,7 +298,7 @@ const DataTable = memo(({
       return true;
     }
 
-    return data.length > 0 && !progressPending;
+    return data.length > 0;
   };
 
   const showSelectAll = persistSelectedOnPageChange || selectableRowsNoSelectAll;
@@ -323,12 +323,6 @@ const DataTable = memo(({
           )}
 
           <TableWrapper>
-            {progressPending && !persistTableHead && (
-              <ProgressWrapper>
-                {progressComponent}
-              </ProgressWrapper>
-            )}
-
             <Table disabled={disabled} className="rdt_Table" role="table">
               {showTableHead() && (
                 <TableHead className="rdt_TableHead" role="rowgroup">
@@ -355,6 +349,12 @@ const DataTable = memo(({
                     ))}
                   </TableHeadRow>
                 </TableHead>
+              )}
+
+              {progressPending && !persistTableHead && (
+                <ProgressWrapper>
+                  {progressComponent}
+                </ProgressWrapper>
               )}
 
               {!data.length > 0 && !progressPending && (

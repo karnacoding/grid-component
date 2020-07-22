@@ -14456,7 +14456,7 @@ var DataTable = React.memo(function (_ref) {
       return true;
     }
 
-    return data.length > 0 && !progressPending;
+    return data.length > 0;
   };
 
   var showSelectAll = persistSelectedOnPageChange || selectableRowsNoSelectAll;
@@ -14474,7 +14474,7 @@ var DataTable = React.memo(function (_ref) {
     title: title,
     actions: actions,
     showMenu: !noContextMenu
-  }), /*#__PURE__*/React__default.createElement(TableWrapper, null, progressPending && !persistTableHead && /*#__PURE__*/React__default.createElement(ProgressWrapper, null, progressComponent), /*#__PURE__*/React__default.createElement(TableStyle, {
+  }), /*#__PURE__*/React__default.createElement(TableWrapper, null, /*#__PURE__*/React__default.createElement(TableStyle, {
     disabled: disabled,
     className: "rdt_Table",
     role: "table"
@@ -14499,7 +14499,7 @@ var DataTable = React.memo(function (_ref) {
       column: column,
       sortIcon: sortIcon
     });
-  }))), !data.length > 0 && !progressPending && /*#__PURE__*/React__default.createElement(NoDataWrapper, null, noDataComponent), progressPending && persistTableHead && /*#__PURE__*/React__default.createElement(ProgressWrapper, null, progressComponent), subHeader && /*#__PURE__*/React__default.createElement(TableSubheader, {
+  }))), progressPending && !persistTableHead && /*#__PURE__*/React__default.createElement(ProgressWrapper, null, progressComponent), !data.length > 0 && !progressPending && /*#__PURE__*/React__default.createElement(NoDataWrapper, null, noDataComponent), progressPending && persistTableHead && /*#__PURE__*/React__default.createElement(ProgressWrapper, null, progressComponent), subHeader && /*#__PURE__*/React__default.createElement(TableSubheader, {
     align: subHeaderAlign,
     wrapContent: subHeaderWrap,
     onDrop: onDropEvt
