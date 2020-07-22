@@ -12490,6 +12490,12 @@ var TableRow = React.memo(function (_ref) {
     pointerOnHover: !defaultExpanderDisabled && showPointer,
     dense: dense,
     drag: draggable,
+    dragConstraints: {
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0
+    },
     onClick: handleRowClick,
     onDoubleClick: handleRowDoubleClick,
     draggable: draggable,
@@ -13004,7 +13010,7 @@ function _templateObject3$5() {
 }
 
 function _templateObject2$9() {
-  var data = _taggedTemplateLiteral(["\n    overflow-x: auto;\n\n    // prevents vertical scrolling in firefox\n    overflow-y: hidden;\n    min-height: 0;\n  "]);
+  var data = _taggedTemplateLiteral(["\n    overflow-x: visible;\n\n    // prevents vertical scrolling in firefox\n    overflow-y: visible;\n    min-height: 0;\n  "]);
 
   _templateObject2$9 = function _templateObject2() {
     return data;

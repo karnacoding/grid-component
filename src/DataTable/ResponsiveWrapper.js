@@ -10,10 +10,10 @@ const ResponsiveWrapper = styled.div`
   position: relative;
   width: 100%;
   ${props => props.responsive && css`
-    overflow-x: auto;
+    overflow-x: visible;
 
     // prevents vertical scrolling in firefox
-    overflow-y: hidden;
+    overflow-y: visible;
     min-height: 0;
   `};
   ${props => props.overflowY && props.responsive && props.overflowYOffset && css`
