@@ -121,11 +121,13 @@ const TableRow = memo(({
         drag={draggable}
         dragConstraints={
           {
-            left: -400,
+            left: 0,
             right: 0,
             bottom: 0,
+            top: 0,
           }
         }
+        dragElastic={1}
         onClick={handleRowClick}
         onDoubleClick={handleRowDoubleClick}
         draggable={draggable}
