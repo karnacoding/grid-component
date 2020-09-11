@@ -99,11 +99,11 @@ const TableRow = memo(({
 
   const onDragEvt = useCallback(e => {
     onDrag(row, e);
-  }, [draggable, row]);
+  }, [draggable, row, onDrag]);
 
   const onDragEndEvt = useCallback((e, info) => {
     onDragEnd(row, e, info);
-  }, [draggable]);
+  }, [draggable,row,onDragEnd]);
 
   const extendedRowStyle = getConditionalStyle(row, conditionalRowStyles);
   const hightlightSelected = selectableRowsHighlight && selected;
