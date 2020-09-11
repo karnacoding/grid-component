@@ -12478,7 +12478,7 @@ var TableRow = React.memo(function (_ref) {
   }, [draggable, row]);
   var onDragEndEvt = React.useCallback(function (e, info) {
     onDragEnd(row, e, info);
-  }, [draggable]);
+  }, [draggable, row]);
   var extendedRowStyle = getConditionalStyle(row, conditionalRowStyles);
   var hightlightSelected = selectableRowsHighlight && selected;
   var inheritStyles = inheritConditionalStyles ? extendedRowStyle : null;
