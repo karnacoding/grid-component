@@ -20,7 +20,7 @@ const ColumnSortable = styled.div`
   span.__rdt_custom_sort_icon__ {
     i,
     svg {
-      ${props => (props.sortActive ? 'opacity: 1' : 'opacity: 0')};
+      ${props => (props.sortActive ? 'opacity: 1' : 'opacity: 1')}; //kundan
       color: inherit;
       font-size: 18px !important;
       height: 18px !important;
