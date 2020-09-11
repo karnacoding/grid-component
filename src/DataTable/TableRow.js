@@ -144,16 +144,6 @@ const TableRow = memo(({
             selected={selected}
           />
         )}
-
-        {expandableRows && !expandableRowsHideExpander && (
-          <TableCellExpander
-            expanded={expanded}
-            row={row}
-            onRowExpandToggled={handleExpanded}
-            disabled={defaultExpanderDisabled}
-          />
-        )}
-
         {columns.map(column => (
           <TableCell
             id={`cell-${column.id}-${row[keyField]}`}
@@ -162,6 +152,14 @@ const TableRow = memo(({
             row={row}
           />
         ))}
+        {expandableRows && !expandableRowsHideExpander && (
+          <TableCellExpander
+            expanded={expanded}
+            row={row}
+            onRowExpandToggled={handleExpanded}
+            disabled={defaultExpanderDisabled}
+          />
+        )}
       </TableRowStyle>
 
       {expandableRows && expanded && (

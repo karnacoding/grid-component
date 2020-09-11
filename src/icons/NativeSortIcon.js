@@ -22,7 +22,7 @@ NativeSortIcon.propTypes = {
 };
 
 NativeSortIcon.defaultProps = {
-  sortActive: false,
+  sortActive: true,
   sortIcon: <>&#9650;</>,
 };
 

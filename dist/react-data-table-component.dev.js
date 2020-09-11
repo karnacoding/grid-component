@@ -12509,11 +12509,6 @@ var TableRow = React.memo(function (_ref) {
     name: "select-row-".concat(row[keyField]),
     row: row,
     selected: selected
-  }), expandableRows && !expandableRowsHideExpander && /*#__PURE__*/React__default.createElement(TableCellExpander, {
-    expanded: expanded,
-    row: row,
-    onRowExpandToggled: handleExpanded,
-    disabled: defaultExpanderDisabled
   }), columns.map(function (column) {
     return /*#__PURE__*/React__default.createElement(TableCell, {
       id: "cell-".concat(column.id, "-").concat(row[keyField]),
@@ -12521,6 +12516,11 @@ var TableRow = React.memo(function (_ref) {
       column: column,
       row: row
     });
+  }), expandableRows && !expandableRowsHideExpander && /*#__PURE__*/React__default.createElement(TableCellExpander, {
+    expanded: expanded,
+    row: row,
+    onRowExpandToggled: handleExpanded,
+    disabled: defaultExpanderDisabled
   })), expandableRows && expanded && /*#__PURE__*/React__default.createElement(ExpanderRow, {
     key: "expander--".concat(row[keyField]),
     data: row,
@@ -12591,7 +12591,7 @@ NativeSortIcon.propTypes = {
   sortIcon: propTypes.node
 };
 NativeSortIcon.defaultProps = {
-  sortActive: false,
+  sortActive: true,
   sortIcon: /*#__PURE__*/React__default.createElement(React__default.Fragment, null, "\u25B2")
 };
 
@@ -12620,7 +12620,7 @@ var TableColStyle = styled__default(Cell)(_templateObject$c(), function (props) 
 var ColumnSortable = styled__default.div(_templateObject2$5(), function (props) {
   return props.sortActive ? props.theme.headCells.activeSortStyle : props.theme.headCells.inactiveSortStyle;
 }, function (props) {
-  return props.sortActive ? 'opacity: 1' : 'opacity: 0';
+  return props.sortActive ? 'opacity: 1' : 'opacity: 1';
 }, function (_ref) {
   var column = _ref.column;
   return column.sortable && 'cursor: pointer';
