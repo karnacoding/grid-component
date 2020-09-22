@@ -12475,10 +12475,10 @@ var TableRow = React.memo(function (_ref) {
   }, [defaultExpanderDisabled, expandOnRowDoubleClicked, expandableRows, handleExpanded, onRowDoubleClicked, row]);
   var onDragEvt = React.useCallback(function (e) {
     onDrag(row, e);
-  }, [draggable, row]);
+  }, [onDrag, row]);
   var onDragEndEvt = React.useCallback(function (e, info) {
     onDragEnd(row, e, info);
-  }, [draggable, row]);
+  }, [onDragEnd, row]);
   var extendedRowStyle = getConditionalStyle(row, conditionalRowStyles);
   var hightlightSelected = selectableRowsHighlight && selected;
   var inheritStyles = inheritConditionalStyles ? extendedRowStyle : null;
