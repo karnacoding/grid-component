@@ -29,6 +29,7 @@ const BasicFixedHeader = () => (
     data={data}
     fixedHeader
     fixedHeaderScrollHeight="300px"
+    draggable
   />
 );
 
