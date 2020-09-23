@@ -32,5 +32,6 @@ const BasicFixedHeader = () => (
   />
 );
 
+
 storiesOf('General', module)
   .add('Fixed Header', BasicFixedHeader);

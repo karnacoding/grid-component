@@ -18,7 +18,7 @@ export const defaultThemes = {
       default: 'rgba(0,0,0,.12)',
     },
     button: {
-      default: 'rgba(0,0,0,.54)',
+      default: 'rgba(0,0,0,0)',
       focus: 'rgba(0,0,0,0)',
       hover: 'rgba(0,0,0,0)',
       disabled: 'rgba(0, 0, 0, .18)',

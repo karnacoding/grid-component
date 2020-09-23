@@ -19,8 +19,8 @@ export const defaultThemes = {
     },
     button: {
       default: 'rgba(0,0,0,.54)',
-      focus: 'rgba(0,0,0,0)',
-      hover: 'rgba(0,0,0,0)',
+      focus: 'rgba(0,0,0,.12)',
+      hover: 'rgba(0,0,0,.12)',
       disabled: 'rgba(0, 0, 0, .18)',
     },
     sortFocus: {

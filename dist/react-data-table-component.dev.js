@@ -4541,6 +4541,41 @@ function __rest(s, e) {
     return t;
 }
 
+function __values(o) {
+    var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
+    if (m) return m.call(o);
+    if (o && typeof o.length === "number") return {
+        next: function () {
+            if (o && i >= o.length) o = void 0;
+            return { value: o && o[i++], done: !o };
+        }
+    };
+    throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
+}
+
+function __read(o, n) {
+    var m = typeof Symbol === "function" && o[Symbol.iterator];
+    if (!m) return o;
+    var i = m.call(o), r, ar = [], e;
+    try {
+        while ((n === void 0 || n-- > 0) && !(r = i.next()).done) ar.push(r.value);
+    }
+    catch (error) { e = { error: error }; }
+    finally {
+        try {
+            if (r && !r.done && (m = i["return"])) m.call(i);
+        }
+        finally { if (e) throw e.error; }
+    }
+    return ar;
+}
+
+function __spread() {
+    for (var ar = [], i = 0; i < arguments.length; i++)
+        ar = ar.concat(__read(arguments[i]));
+    return ar;
+}
+
 function __spreadArrays() {
     for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
     for (var r = Array(s), k = 0, i = 0; i < il; i++)
@@ -4565,16 +4600,18 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 var prevTime = 0;
-var onNextFrame = typeof window !== 'undefined' && window.requestAnimationFrame !== undefined
-    ? function (callback) { return window.requestAnimationFrame(callback); }
-    : function (callback) {
-        var timestamp = Date.now();
-        var timeToCall = Math.max(0, 16.7 - (timestamp - prevTime));
-        prevTime = timestamp + timeToCall;
-        setTimeout(function () { return callback(prevTime); }, timeToCall);
-    };
+var onNextFrame = typeof window !== 'undefined' && window.requestAnimationFrame !== undefined ? function (callback) {
+    return window.requestAnimationFrame(callback);
+} : function (callback) {
+    var timestamp = Date.now();
+    var timeToCall = Math.max(0, 16.7 - (timestamp - prevTime));
+    prevTime = timestamp + timeToCall;
+    setTimeout(function () {
+        return callback(prevTime);
+    }, timeToCall);
+};
 
-var createStep = (function (setRunNextFrame) {
+var createStep = function (setRunNextFrame) {
     var processToRun = [];
     var processToRunNextFrame = [];
     var numThisFrame = 0;
@@ -4593,10 +4630,7 @@ var createStep = (function (setRunNextFrame) {
         process: function (frame) {
             var _a;
             isProcessing = true;
-            _a = [
-                processToRunNextFrame,
-                processToRun
-            ], processToRun = _a[0], processToRunNextFrame = _a[1];
+            _a = [processToRunNextFrame, processToRun], processToRun = _a[0], processToRunNextFrame = _a[1];
             processToRunNextFrame.length = 0;
             numThisFrame = processToRun.length;
             if (numThisFrame) {
@@ -4613,35 +4647,28 @@ var createStep = (function (setRunNextFrame) {
             isProcessing = false;
         },
         schedule: function (process, keepAlive, immediate) {
-            if (keepAlive === void 0) { keepAlive = false; }
-            if (immediate === void 0) { immediate = false; }
-            invariant(typeof process === 'function', 'Argument must be a function');
+            if (keepAlive === void 0) {
+                keepAlive = false;
+            }
+            if (immediate === void 0) {
+                immediate = false;
+            }
+            invariant(typeof process === "function", "Argument must be a function");
             var addToCurrentBuffer = immediate && isProcessing;
             var buffer = addToCurrentBuffer ? processToRun : processToRunNextFrame;
             cancelled.delete(process);
-            if (keepAlive)
-                toKeepAlive.add(process);
+            if (keepAlive) toKeepAlive.add(process);
             if (buffer.indexOf(process) === -1) {
                 buffer.push(process);
-                if (addToCurrentBuffer)
-                    numThisFrame = processToRun.length;
+                if (addToCurrentBuffer) numThisFrame = processToRun.length;
             }
         }
     };
     return renderStep;
-});
-
-var StepId;
-(function (StepId) {
-    StepId["Read"] = "read";
-    StepId["Update"] = "update";
-    StepId["Render"] = "render";
-    StepId["PostRender"] = "postRender";
-    StepId["FixedUpdate"] = "fixedUpdate";
-})(StepId || (StepId = {}));
+};
 
 var maxElapsed = 40;
-var defaultElapsed = (1 / 60) * 1000;
+var defaultElapsed = 1 / 60 * 1000;
 var useDefaultElapsed = true;
 var willRunNextFrame = false;
 var isProcessing = false;
@@ -4649,39 +4676,40 @@ var frame = {
     delta: 0,
     timestamp: 0
 };
-var stepsOrder = [
-    StepId.Read,
-    StepId.Update,
-    StepId.Render,
-    StepId.PostRender
-];
-var setWillRunNextFrame = function (willRun) { return (willRunNextFrame = willRun); };
-var _a = stepsOrder.reduce(function (acc, key) {
-    var step = createStep(setWillRunNextFrame);
-    acc.sync[key] = function (process, keepAlive, immediate) {
-        if (keepAlive === void 0) { keepAlive = false; }
-        if (immediate === void 0) { immediate = false; }
-        if (!willRunNextFrame)
-            startLoop();
+var stepsOrder = ["read", "update", "preRender", "render", "postRender"];
+var setWillRunNextFrame = function (willRun) {
+    return willRunNextFrame = willRun;
+};
+var steps = /*#__PURE__*/stepsOrder.reduce(function (acc, key) {
+    acc[key] = createStep(setWillRunNextFrame);
+    return acc;
+}, {});
+var sync = /*#__PURE__*/stepsOrder.reduce(function (acc, key) {
+    var step = steps[key];
+    acc[key] = function (process, keepAlive, immediate) {
+        if (keepAlive === void 0) {
+            keepAlive = false;
+        }
+        if (immediate === void 0) {
+            immediate = false;
+        }
+        if (!willRunNextFrame) startLoop();
         step.schedule(process, keepAlive, immediate);
         return process;
     };
-    acc.cancelSync[key] = function (process) { return step.cancel(process); };
-    acc.steps[key] = step;
     return acc;
-}, {
-    steps: {},
-    sync: {},
-    cancelSync: {}
-}), steps = _a.steps, sync = _a.sync, cancelSync = _a.cancelSync;
-var processStep = function (stepId) { return steps[stepId].process(frame); };
+}, {});
+var cancelSync = /*#__PURE__*/stepsOrder.reduce(function (acc, key) {
+    acc[key] = steps[key].cancel;
+    return acc;
+}, {});
+var processStep = function (stepId) {
+    return steps[stepId].process(frame);
+};
 var processFrame = function (timestamp) {
     willRunNextFrame = false;
-    frame.delta = useDefaultElapsed
-        ? defaultElapsed
-        : Math.max(Math.min(timestamp - frame.timestamp, maxElapsed), 1);
-    if (!useDefaultElapsed)
-        defaultElapsed = frame.delta;
+    frame.delta = useDefaultElapsed ? defaultElapsed : Math.max(Math.min(timestamp - frame.timestamp, maxElapsed), 1);
+    if (!useDefaultElapsed) defaultElapsed = frame.delta;
     frame.timestamp = timestamp;
     isProcessing = true;
     stepsOrder.forEach(processStep);
@@ -4694,35 +4722,10 @@ var processFrame = function (timestamp) {
 var startLoop = function () {
     willRunNextFrame = true;
     useDefaultElapsed = true;
-    if (!isProcessing)
-        onNextFrame(processFrame);
+    if (!isProcessing) onNextFrame(processFrame);
 };
-var getFrameData = function () { return frame; };
-
-/*! *****************************************************************************
-Copyright (c) Microsoft Corporation. All rights reserved.
-Licensed under the Apache License, Version 2.0 (the "License"); you may not use
-this file except in compliance with the License. You may obtain a copy of the
-License at http://www.apache.org/licenses/LICENSE-2.0
-
-THIS CODE IS PROVIDED ON AN *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
-WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
-MERCHANTABLITY OR NON-INFRINGEMENT.
-
-See the Apache Version 2.0 License for specific language governing permissions
-and limitations under the License.
-***************************************************************************** */
-
-var __assign$1 = function() {
-    __assign$1 = Object.assign || function __assign(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p)) t[p] = s[p];
-        }
-        return t;
-    };
-    return __assign$1.apply(this, arguments);
+var getFrameData = function () {
+    return frame;
 };
 
 var clamp = function (min, max) { return function (v) {
@@ -4730,16 +4733,16 @@ var clamp = function (min, max) { return function (v) {
 }; };
 var sanitize = function (v) { return (v % 1 ? Number(v.toFixed(5)) : v); };
 var floatRegex = /(-)?(\d[\d\.]*)/g;
-var colorRegex = /(#[0-9a-f]{6}|#[0-9a-f]{3}|#(?:[0-9a-f]{2}){2,4}|(rgb|hsl)a?\((-?\d+%?[,\s]+){2,3}\s*[\d\.]+%?\))/gi;
-var singleColorRegex = /^(#[0-9a-f]{3}|#(?:[0-9a-f]{2}){2,4}|(rgb|hsl)a?\((-?\d+%?[,\s]+){2,3}\s*[\d\.]+%?\))$/i;
+var colorRegex = /(#[0-9a-f]{6}|#[0-9a-f]{3}|#(?:[0-9a-f]{2}){2,4}|(rgb|hsl)a?\((-?[\d\.]+%?[,\s]+){2,3}\s*\/*\s*[\d\.]+%?\))/gi;
+var singleColorRegex = /^(#[0-9a-f]{3}|#(?:[0-9a-f]{2}){2,4}|(rgb|hsl)a?\((-?[\d\.]+%?[,\s]+){2,3}\s*\/*\s*[\d\.]+%?\))$/i;
 
 var number = {
     test: function (v) { return typeof v === 'number'; },
     parse: parseFloat,
     transform: function (v) { return v; }
 };
-var alpha = __assign$1(__assign$1({}, number), { transform: clamp(0, 1) });
-var scale = __assign$1(__assign$1({}, number), { default: 1 });
+var alpha = __assign(__assign({}, number), { transform: clamp(0, 1) });
+var scale = __assign(__assign({}, number), { default: 1 });
 
 var createUnitType = function (unit) { return ({
     test: function (v) {
@@ -4753,7 +4756,7 @@ var percent = createUnitType('%');
 var px = createUnitType('px');
 var vh = createUnitType('vh');
 var vw = createUnitType('vw');
-var progressPercentage = __assign$1(__assign$1({}, percent), { parse: function (v) { return percent.parse(v) / 100; }, transform: function (v) { return percent.transform(v * 100); } });
+var progressPercentage = __assign(__assign({}, percent), { parse: function (v) { return percent.parse(v) / 100; }, transform: function (v) { return percent.transform(v * 100); } });
 
 var getValueFromFunctionString = function (value) {
     return value.substring(value.indexOf('(') + 1, value.lastIndexOf(')'));
@@ -4761,12 +4764,17 @@ var getValueFromFunctionString = function (value) {
 var clampRgbUnit = clamp(0, 255);
 var isRgba = function (v) { return v.red !== undefined; };
 var isHsla = function (v) { return v.hue !== undefined; };
+function getValuesAsArray(value) {
+    return getValueFromFunctionString(value)
+        .replace(/(,|\/)/g, ' ')
+        .split(/ \s*/);
+}
 var splitColorValues = function (terms) {
     return function (v) {
         if (typeof v !== 'string')
             return v;
         var values = {};
-        var valuesArray = getValueFromFunctionString(v).split(/,\s*/);
+        var valuesArray = getValuesAsArray(v);
         for (var i = 0; i < 4; i++) {
             values[terms[i]] =
                 valuesArray[i] !== undefined ? parseFloat(valuesArray[i]) : 1;
@@ -4775,14 +4783,14 @@ var splitColorValues = function (terms) {
     };
 };
 var rgbaTemplate = function (_a) {
-    var red = _a.red, green = _a.green, blue = _a.blue, _b = _a.alpha, alpha$$1 = _b === void 0 ? 1 : _b;
-    return "rgba(" + red + ", " + green + ", " + blue + ", " + alpha$$1 + ")";
+    var red = _a.red, green = _a.green, blue = _a.blue, _b = _a.alpha, alpha = _b === void 0 ? 1 : _b;
+    return "rgba(" + red + ", " + green + ", " + blue + ", " + alpha + ")";
 };
 var hslaTemplate = function (_a) {
-    var hue = _a.hue, saturation = _a.saturation, lightness = _a.lightness, _b = _a.alpha, alpha$$1 = _b === void 0 ? 1 : _b;
-    return "hsla(" + hue + ", " + saturation + ", " + lightness + ", " + alpha$$1 + ")";
+    var hue = _a.hue, saturation = _a.saturation, lightness = _a.lightness, _b = _a.alpha, alpha = _b === void 0 ? 1 : _b;
+    return "hsla(" + hue + ", " + saturation + ", " + lightness + ", " + alpha + ")";
 };
-var rgbUnit = __assign$1(__assign$1({}, number), { transform: function (v) { return Math.round(clampRgbUnit(v)); } });
+var rgbUnit = __assign(__assign({}, number), { transform: function (v) { return Math.round(clampRgbUnit(v)); } });
 function isColorString(color, colorType) {
     return color.startsWith(colorType) && singleColorRegex.test(color);
 }
@@ -4790,12 +4798,12 @@ var rgba = {
     test: function (v) { return (typeof v === 'string' ? isColorString(v, 'rgb') : isRgba(v)); },
     parse: splitColorValues(['red', 'green', 'blue', 'alpha']),
     transform: function (_a) {
-        var red = _a.red, green = _a.green, blue = _a.blue, _b = _a.alpha, alpha$$1 = _b === void 0 ? 1 : _b;
+        var red = _a.red, green = _a.green, blue = _a.blue, _b = _a.alpha, alpha$1 = _b === void 0 ? 1 : _b;
         return rgbaTemplate({
             red: rgbUnit.transform(red),
             green: rgbUnit.transform(green),
             blue: rgbUnit.transform(blue),
-            alpha: sanitize(alpha.transform(alpha$$1))
+            alpha: sanitize(alpha.transform(alpha$1))
         });
     }
 };
@@ -4803,16 +4811,16 @@ var hsla = {
     test: function (v) { return (typeof v === 'string' ? isColorString(v, 'hsl') : isHsla(v)); },
     parse: splitColorValues(['hue', 'saturation', 'lightness', 'alpha']),
     transform: function (_a) {
-        var hue = _a.hue, saturation = _a.saturation, lightness = _a.lightness, _b = _a.alpha, alpha$$1 = _b === void 0 ? 1 : _b;
+        var hue = _a.hue, saturation = _a.saturation, lightness = _a.lightness, _b = _a.alpha, alpha$1 = _b === void 0 ? 1 : _b;
         return hslaTemplate({
             hue: Math.round(hue),
             saturation: percent.transform(sanitize(saturation)),
             lightness: percent.transform(sanitize(lightness)),
-            alpha: sanitize(alpha.transform(alpha$$1))
+            alpha: sanitize(alpha.transform(alpha$1))
         });
     }
 };
-var hex = __assign$1(__assign$1({}, rgba), { test: function (v) { return typeof v === 'string' && isColorString(v, '#'); }, parse: function (v) {
+var hex = __assign(__assign({}, rgba), { test: function (v) { return typeof v === 'string' && isColorString(v, '#'); }, parse: function (v) {
         var r = '';
         var g = '';
         var b = '';
@@ -4931,259 +4939,89 @@ var complex = {
     }
 };
 
-var DEFAULT_OVERSHOOT_STRENGTH = 1.525;
-var reversed = function (easing) {
-    return function (p) {
-        return 1 - easing(1 - p);
-    };
-};
-var mirrored = function (easing) {
-    return function (p) {
-        return p <= 0.5 ? easing(2 * p) / 2 : (2 - easing(2 * (1 - p))) / 2;
-    };
-};
-var createReversedEasing = reversed;
-var createMirroredEasing = mirrored;
-var createExpoIn = function (power) {
-    return function (p) {
-        return Math.pow(p, power);
-    };
-};
-var createBackIn = function (power) {
-    return function (p) {
-        return p * p * ((power + 1) * p - power);
-    };
-};
-var createAnticipateEasing = function (power) {
-    var backEasing = createBackIn(power);
-    return function (p) {
-        return (p *= 2) < 1 ? 0.5 * backEasing(p) : 0.5 * (2 - Math.pow(2, -10 * (p - 1)));
-    };
-};
-var linear = function (p) {
-    return p;
-};
-var easeIn = /*#__PURE__*/createExpoIn(2);
-var easeOut = /*#__PURE__*/reversed(easeIn);
-var easeInOut = /*#__PURE__*/mirrored(easeIn);
-var circIn = function (p) {
-    return 1 - Math.sin(Math.acos(p));
-};
-var circOut = /*#__PURE__*/reversed(circIn);
-var circInOut = /*#__PURE__*/mirrored(circOut);
-var backIn = /*#__PURE__*/createBackIn(DEFAULT_OVERSHOOT_STRENGTH);
-var backOut = /*#__PURE__*/reversed(backIn);
-var backInOut = /*#__PURE__*/mirrored(backIn);
-var anticipate = /*#__PURE__*/createAnticipateEasing(DEFAULT_OVERSHOOT_STRENGTH);
-var BOUNCE_FIRST_THRESHOLD = 4.0 / 11.0;
-var BOUNCE_SECOND_THRESHOLD = 8.0 / 11.0;
-var BOUNCE_THIRD_THRESHOLD = 9.0 / 10.0;
-var ca = 4356.0 / 361.0;
-var cb = 35442.0 / 1805.0;
-var cc = 16061.0 / 1805.0;
-var bounceOut = function (p) {
-    var p2 = p * p;
-    return p < BOUNCE_FIRST_THRESHOLD ? 7.5625 * p2 : p < BOUNCE_SECOND_THRESHOLD ? 9.075 * p2 - 9.9 * p + 3.4 : p < BOUNCE_THIRD_THRESHOLD ? ca * p2 - cb * p + cc : 10.8 * p * p - 20.52 * p + 10.72;
-};
-var bounceIn = function (p) {
-    return 1.0 - bounceOut(1.0 - p);
-};
-var bounceInOut = function (p) {
-    return p < 0.5 ? 0.5 * (1.0 - bounceOut(1.0 - p * 2.0)) : 0.5 * bounceOut(p * 2.0 - 1.0) + 0.5;
-};
-var NEWTON_ITERATIONS = 8;
-var NEWTON_MIN_SLOPE = 0.001;
-var SUBDIVISION_PRECISION = 0.0000001;
-var SUBDIVISION_MAX_ITERATIONS = 10;
-var K_SPLINE_TABLE_SIZE = 11;
-var K_SAMPLE_STEP_SIZE = 1.0 / (K_SPLINE_TABLE_SIZE - 1.0);
-var FLOAT_32_SUPPORTED = typeof Float32Array !== 'undefined';
-var a = function (a1, a2) {
-    return 1.0 - 3.0 * a2 + 3.0 * a1;
-};
-var b$1 = function (a1, a2) {
-    return 3.0 * a2 - 6.0 * a1;
-};
-var c$1 = function (a1) {
-    return 3.0 * a1;
-};
-var getSlope = function (t, a1, a2) {
-    return 3.0 * a(a1, a2) * t * t + 2.0 * b$1(a1, a2) * t + c$1(a1);
-};
-var calcBezier = function (t, a1, a2) {
-    return ((a(a1, a2) * t + b$1(a1, a2)) * t + c$1(a1)) * t;
-};
-function cubicBezier(mX1, mY1, mX2, mY2) {
-    var sampleValues = FLOAT_32_SUPPORTED ? new Float32Array(K_SPLINE_TABLE_SIZE) : new Array(K_SPLINE_TABLE_SIZE);
-    var binarySubdivide = function (aX, aA, aB) {
-        var i = 0;
-        var currentX;
-        var currentT;
-        do {
-            currentT = aA + (aB - aA) / 2.0;
-            currentX = calcBezier(currentT, mX1, mX2) - aX;
-            if (currentX > 0.0) {
-                aB = currentT;
-            } else {
-                aA = currentT;
-            }
-        } while (Math.abs(currentX) > SUBDIVISION_PRECISION && ++i < SUBDIVISION_MAX_ITERATIONS);
-        return currentT;
-    };
-    var newtonRaphsonIterate = function (aX, aGuessT) {
-        var i = 0;
-        var currentSlope = 0;
-        var currentX;
-        for (; i < NEWTON_ITERATIONS; ++i) {
-            currentSlope = getSlope(aGuessT, mX1, mX2);
-            if (currentSlope === 0.0) {
-                return aGuessT;
-            }
-            currentX = calcBezier(aGuessT, mX1, mX2) - aX;
-            aGuessT -= currentX / currentSlope;
-        }
-        return aGuessT;
-    };
-    var calcSampleValues = function () {
-        for (var i = 0; i < K_SPLINE_TABLE_SIZE; ++i) {
-            sampleValues[i] = calcBezier(i * K_SAMPLE_STEP_SIZE, mX1, mX2);
-        }
-    };
-    var getTForX = function (aX) {
-        var intervalStart = 0.0;
-        var currentSample = 1;
-        var lastSample = K_SPLINE_TABLE_SIZE - 1;
-        var dist = 0.0;
-        var guessForT = 0.0;
-        var initialSlope = 0.0;
-        for (; currentSample !== lastSample && sampleValues[currentSample] <= aX; ++currentSample) {
-            intervalStart += K_SAMPLE_STEP_SIZE;
-        }
-        --currentSample;
-        dist = (aX - sampleValues[currentSample]) / (sampleValues[currentSample + 1] - sampleValues[currentSample]);
-        guessForT = intervalStart + dist * K_SAMPLE_STEP_SIZE;
-        initialSlope = getSlope(guessForT, mX1, mX2);
-        if (initialSlope >= NEWTON_MIN_SLOPE) {
-            return newtonRaphsonIterate(aX, guessForT);
-        } else if (initialSlope === 0.0) {
-            return guessForT;
+function spring(_a) {
+    var _b = _a.from,
+        from = _b === void 0 ? 0.0 : _b,
+        _c = _a.to,
+        to = _c === void 0 ? 0.0 : _c,
+        _d = _a.velocity,
+        velocity = _d === void 0 ? 0.0 : _d,
+        _e = _a.stiffness,
+        stiffness = _e === void 0 ? 100 : _e,
+        _f = _a.damping,
+        damping = _f === void 0 ? 10 : _f,
+        _g = _a.mass,
+        mass = _g === void 0 ? 1.0 : _g,
+        _h = _a.restSpeed,
+        restSpeed = _h === void 0 ? 2 : _h,
+        restDelta = _a.restDelta;
+    var state = { done: false, value: from };
+    var resolveSpring = zero;
+    var resolveVelocity = zero;
+    function createSpring() {
+        var initialVelocity = velocity ? -(velocity / 1000) : 0.0;
+        var initialDelta = to - from;
+        var dampingRatio = damping / (2 * Math.sqrt(stiffness * mass));
+        var angularFreq = Math.sqrt(stiffness / mass) / 1000;
+        restDelta !== null && restDelta !== void 0 ? restDelta : restDelta = Math.abs(to - from) <= 1 ? 0.01 : 0.4;
+        if (dampingRatio < 1) {
+            resolveSpring = function (t) {
+                var envelope = Math.exp(-dampingRatio * angularFreq * t);
+                var expoDecay = angularFreq * Math.sqrt(1.0 - dampingRatio * dampingRatio);
+                return to - envelope * ((initialVelocity + dampingRatio * angularFreq * initialDelta) / expoDecay * Math.sin(expoDecay * t) + initialDelta * Math.cos(expoDecay * t));
+            };
+            resolveVelocity = function (t) {
+                var envelope = Math.exp(-dampingRatio * angularFreq * t);
+                var expoDecay = angularFreq * Math.sqrt(1.0 - dampingRatio * dampingRatio);
+                return dampingRatio * angularFreq * envelope * (Math.sin(expoDecay * t) * (initialVelocity + dampingRatio * angularFreq * initialDelta) / expoDecay + initialDelta * Math.cos(expoDecay * t)) - envelope * (Math.cos(expoDecay * t) * (initialVelocity + dampingRatio * angularFreq * initialDelta) - expoDecay * initialDelta * Math.sin(expoDecay * t));
+            };
+        } else if (dampingRatio === 1) {
+            resolveSpring = function (t) {
+                var envelope = Math.exp(-angularFreq * t);
+                return to - envelope * (initialDelta + (initialVelocity + angularFreq * initialDelta) * t);
+            };
         } else {
-            return binarySubdivide(aX, intervalStart, intervalStart + K_SAMPLE_STEP_SIZE);
+            var dampedAngularFreq_1 = angularFreq * Math.sqrt(dampingRatio * dampingRatio - 1);
+            resolveSpring = function (t) {
+                var envelope = Math.exp(-dampingRatio * angularFreq * t);
+                var freqForT = Math.min(dampedAngularFreq_1 * t, 300);
+                return to - envelope * ((initialVelocity + dampingRatio * angularFreq * initialDelta) * Math.sinh(freqForT) + dampedAngularFreq_1 * initialDelta * Math.cosh(freqForT)) / dampedAngularFreq_1;
+            };
+        }
+    }
+    createSpring();
+    return {
+        next: function (t) {
+            var current = resolveSpring(t);
+            var velocity = resolveVelocity(t) * 1000;
+            var isBelowVelocityThreshold = Math.abs(velocity) <= restSpeed;
+            var isBelowDisplacementThreshold = Math.abs(to - current) <= restDelta;
+            state.done = isBelowVelocityThreshold && isBelowDisplacementThreshold;
+            state.value = state.done ? to : current;
+            return state;
+        },
+        flipTarget: function () {
+            var _a;
+            velocity = -velocity;
+            _a = [to, from], from = _a[0], to = _a[1];
+            createSpring();
         }
     };
-    calcSampleValues();
-    var resolver = function (aX) {
-        var returnValue;
-        if (mX1 === mY1 && mX2 === mY2) {
-            returnValue = aX;
-        } else if (aX === 0) {
-            returnValue = 0;
-        } else if (aX === 1) {
-            returnValue = 1;
-        } else {
-            returnValue = calcBezier(getTForX(aX), mY1, mY2);
-        }
-        return returnValue;
-    };
-    return resolver;
 }
-
-var easingLookup = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  reversed: reversed,
-  mirrored: mirrored,
-  createReversedEasing: createReversedEasing,
-  createMirroredEasing: createMirroredEasing,
-  createExpoIn: createExpoIn,
-  createBackIn: createBackIn,
-  createAnticipateEasing: createAnticipateEasing,
-  linear: linear,
-  easeIn: easeIn,
-  easeOut: easeOut,
-  easeInOut: easeInOut,
-  circIn: circIn,
-  circOut: circOut,
-  circInOut: circInOut,
-  backIn: backIn,
-  backOut: backOut,
-  backInOut: backInOut,
-  anticipate: anticipate,
-  bounceOut: bounceOut,
-  bounceIn: bounceIn,
-  bounceInOut: bounceInOut,
-  cubicBezier: cubicBezier
-});
-
-var zeroPoint = {
-    x: 0,
-    y: 0,
-    z: 0
+spring.needsInterpolation = function (a, b) {
+    return typeof a === "string" || typeof b === "string";
 };
-var isNum = function (v) { return typeof v === 'number'; };
-
-var curryRange = (function (func) { return function (min, max, v) { return (v !== undefined ? func(min, max, v) : function (cv) { return func(min, max, cv); }); }; });
-
-var clamp$1 = function (min, max, v) {
-    return Math.min(Math.max(v, min), max);
-};
-var clamp$1$1 = curryRange(clamp$1);
-
-var isPoint = (function (point) {
-    return point.hasOwnProperty('x') && point.hasOwnProperty('y');
-});
-
-var isPoint3D = (function (point) {
-    return isPoint(point) && point.hasOwnProperty('z');
-});
-
-var distance1D = function (a, b) { return Math.abs(a - b); };
-var distance = (function (a, b) {
-    if (b === void 0) { b = zeroPoint; }
-    if (isNum(a) && isNum(b)) {
-        return distance1D(a, b);
-    }
-    else if (isPoint(a) && isPoint(b)) {
-        var xDelta = distance1D(a.x, b.x);
-        var yDelta = distance1D(a.y, b.y);
-        var zDelta = isPoint3D(a) && isPoint3D(b) ? distance1D(a.z, b.z) : 0;
-        return Math.sqrt(Math.pow(xDelta, 2) + Math.pow(yDelta, 2) + Math.pow(zDelta, 2));
-    }
+var zero = function (_t) {
     return 0;
-});
+};
 
-var progress = (function (from, to, value) {
+var progress = function (from, to, value) {
     var toFromDifference = to - from;
     return toFromDifference === 0 ? 1 : (value - from) / toFromDifference;
-});
+};
 
-var mix = (function (from, to, progress) {
+var mix = function (from, to, progress) {
     return -progress * from + progress * to + from;
-});
-
-/*! *****************************************************************************
-Copyright (c) Microsoft Corporation. All rights reserved.
-Licensed under the Apache License, Version 2.0 (the "License"); you may not use
-this file except in compliance with the License. You may obtain a copy of the
-License at http://www.apache.org/licenses/LICENSE-2.0
-
-THIS CODE IS PROVIDED ON AN *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
-WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
-MERCHANTABLITY OR NON-INFRINGEMENT.
-
-See the Apache Version 2.0 License for specific language governing permissions
-and limitations under the License.
-***************************************************************************** */
-
-var __assign$2 = function() {
-    __assign$2 = Object.assign || function __assign(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p)) t[p] = s[p];
-        }
-        return t;
-    };
-    return __assign$2.apply(this, arguments);
 };
 
 var mixLinearColor = function (from, to, v) {
@@ -5193,12 +5031,14 @@ var mixLinearColor = function (from, to, v) {
 };
 var colorTypes = [hex, rgba, hsla];
 var getColorType = function (v) {
-    return colorTypes.find(function (type) { return type.test(v); });
+    return colorTypes.find(function (type) {
+        return type.test(v);
+    });
 };
-var notAnimatable = function (color$$1) {
-    return "'" + color$$1 + "' is not an animatable color. Use the equivalent color code instead.";
+var notAnimatable = function (color) {
+    return "'" + color + "' is not an animatable color. Use the equivalent color code instead.";
 };
-var mixColor = (function (from, to) {
+var mixColor = function (from, to) {
     var fromColorType = getColorType(from);
     var toColorType = getColorType(to);
     invariant(!!fromColorType, notAnimatable(from));
@@ -5206,7 +5046,7 @@ var mixColor = (function (from, to) {
     invariant(fromColorType.transform === toColorType.transform, 'Both colors must be hex/RGBA, OR both must be HSLA.');
     var fromColor = fromColorType.parse(from);
     var toColor = toColorType.parse(to);
-    var blended = __assign$2({}, fromColor);
+    var blended = __assign({}, fromColor);
     var mixFunc = fromColorType === hsla ? mix : mixLinearColor;
     return function (v) {
         for (var key in blended) {
@@ -5217,35 +5057,59 @@ var mixColor = (function (from, to) {
         blended.alpha = mix(fromColor.alpha, toColor.alpha, v);
         return fromColorType.transform(blended);
     };
-});
+};
+var isNum = function (v) {
+    return typeof v === 'number';
+};
 
-var combineFunctions = function (a, b) { return function (v) { return b(a(v)); }; };
-var pipe = (function () {
+var combineFunctions = function (a, b) {
+    return function (v) {
+        return b(a(v));
+    };
+};
+var pipe = function () {
     var transformers = [];
     for (var _i = 0; _i < arguments.length; _i++) {
         transformers[_i] = arguments[_i];
     }
     return transformers.reduce(combineFunctions);
-});
+};
 
 function getMixer(origin, target) {
     if (isNum(origin)) {
-        return function (v) { return mix(origin, target, v); };
-    }
-    else if (color.test(origin)) {
+        return function (v) {
+            return mix(origin, target, v);
+        };
+    } else if (color.test(origin)) {
         return mixColor(origin, target);
-    }
-    else {
+    } else {
         return mixComplex(origin, target);
     }
 }
 var mixArray = function (from, to) {
-    var output = from.slice();
+    var output = __spreadArrays(from);
     var numValues = output.length;
-    var blendValue = from.map(function (fromThis, i) { return getMixer(fromThis, to[i]); });
+    var blendValue = from.map(function (fromThis, i) {
+        return getMixer(fromThis, to[i]);
+    });
     return function (v) {
         for (var i = 0; i < numValues; i++) {
             output[i] = blendValue[i](v);
+        }
+        return output;
+    };
+};
+var mixObject = function (origin, target) {
+    var output = __assign(__assign({}, origin), target);
+    var blendValue = {};
+    for (var key in output) {
+        if (origin[key] !== undefined && target[key] !== undefined) {
+            blendValue[key] = getMixer(origin[key], target[key]);
+        }
+    }
+    return function (v) {
+        for (var key in blendValue) {
+            output[key] = blendValue[key](v);
         }
         return output;
     };
@@ -5259,12 +5123,10 @@ function analyse(value) {
     for (var i = 0; i < numValues; i++) {
         if (numNumbers || typeof parsed[i] === 'number') {
             numNumbers++;
-        }
-        else {
+        } else {
             if (parsed[i].hue !== undefined) {
                 numHSL++;
-            }
-            else {
+            } else {
                 numRGB++;
             }
         }
@@ -5275,308 +5137,378 @@ var mixComplex = function (origin, target) {
     var template = complex.createTransformer(target);
     var originStats = analyse(origin);
     var targetStats = analyse(target);
-    invariant(originStats.numHSL === targetStats.numHSL &&
-        originStats.numRGB === targetStats.numRGB &&
-        originStats.numNumbers >= targetStats.numNumbers, "Complex values '" + origin + "' and '" + target + "' too different to mix. Ensure all colors are of the same type.");
+    invariant(originStats.numHSL === targetStats.numHSL && originStats.numRGB === targetStats.numRGB && originStats.numNumbers >= targetStats.numNumbers, "Complex values '" + origin + "' and '" + target + "' too different to mix. Ensure all colors are of the same type.");
     return pipe(mixArray(originStats.parsed, targetStats.parsed), template);
 };
 
-var velocityPerSecond = (function (velocity, frameDuration) {
-    return frameDuration ? velocity * (1000 / frameDuration) : 0;
-});
-
-var clampProgress = clamp$1$1(0, 1);
-
-var Observer = /*#__PURE__*/function () {
-    function Observer(_a, observer) {
-        var _this = this;
-        var middleware = _a.middleware,
-            onComplete = _a.onComplete;
-        this.isActive = true;
-        this.update = function (v) {
-            if (_this.observer.update) _this.updateObserver(v);
-        };
-        this.complete = function () {
-            if (_this.observer.complete && _this.isActive) _this.observer.complete();
-            if (_this.onComplete) _this.onComplete();
-            _this.isActive = false;
-        };
-        this.error = function (err) {
-            if (_this.observer.error && _this.isActive) _this.observer.error(err);
-            _this.isActive = false;
-        };
-        this.observer = observer;
-        this.updateObserver = function (v) {
-            return observer.update(v);
-        };
-        this.onComplete = onComplete;
-        if (observer.update && middleware && middleware.length) {
-            middleware.forEach(function (m) {
-                return _this.updateObserver = m(_this.updateObserver, _this.complete);
-            });
-        }
-    }
-    return Observer;
-}();
-var createObserver = function (observerCandidate, _a, onComplete) {
-    var middleware = _a.middleware;
-    if (typeof observerCandidate === 'function') {
-        return new Observer({ middleware: middleware, onComplete: onComplete }, { update: observerCandidate });
-    } else {
-        return new Observer({ middleware: middleware, onComplete: onComplete }, observerCandidate);
-    }
+var clamp$1 = function (min, max, v) {
+    return Math.min(Math.max(v, min), max);
 };
 
-var Action = /*#__PURE__*/function () {
-    function Action(props) {
-        if (props === void 0) {
-            props = {};
-        }
-        this.props = props;
-    }
-    Action.prototype.create = function (props) {
-        return new Action(props);
+var mixNumber = function (from, to) {
+    return function (p) {
+        return mix(from, to, p);
     };
-    Action.prototype.start = function (observerCandidate) {
-        if (observerCandidate === void 0) {
-            observerCandidate = {};
+};
+function detectMixerFactory(v) {
+    if (typeof v === 'number') {
+        return mixNumber;
+    } else if (typeof v === 'string') {
+        if (color.test(v)) {
+            return mixColor;
+        } else {
+            return mixComplex;
         }
-        var isComplete = false;
-        var subscription = {
-            stop: function () {
-                return undefined;
+    } else if (Array.isArray(v)) {
+        return mixArray;
+    } else if (typeof v === 'object') {
+        return mixObject;
+    }
+}
+function createMixers(output, ease, customMixer) {
+    var mixers = [];
+    var mixerFactory = customMixer || detectMixerFactory(output[0]);
+    var numMixers = output.length - 1;
+    for (var i = 0; i < numMixers; i++) {
+        var mixer = mixerFactory(output[i], output[i + 1]);
+        if (ease) {
+            var easingFunction = Array.isArray(ease) ? ease[i] : ease;
+            mixer = pipe(easingFunction, mixer);
+        }
+        mixers.push(mixer);
+    }
+    return mixers;
+}
+function fastInterpolate(_a, _b) {
+    var from = _a[0],
+        to = _a[1];
+    var mixer = _b[0];
+    return function (v) {
+        return mixer(progress(from, to, v));
+    };
+}
+function slowInterpolate(input, mixers) {
+    var inputLength = input.length;
+    var lastInputIndex = inputLength - 1;
+    return function (v) {
+        var mixerIndex = 0;
+        var foundMixerIndex = false;
+        if (v <= input[0]) {
+            foundMixerIndex = true;
+        } else if (v >= input[lastInputIndex]) {
+            mixerIndex = lastInputIndex - 1;
+            foundMixerIndex = true;
+        }
+        if (!foundMixerIndex) {
+            var i = 1;
+            for (; i < inputLength; i++) {
+                if (input[i] > v || i === lastInputIndex) {
+                    break;
+                }
             }
-        };
-        var _a = this.props,
-            init = _a.init,
-            observerProps = __rest(_a, ["init"]);
-        var observer = createObserver(observerCandidate, observerProps, function () {
-            isComplete = true;
-            subscription.stop();
-        });
-        var api = init(observer);
-        subscription = api ? __assign({}, subscription, api) : subscription;
-        if (isComplete) subscription.stop();
-        return subscription;
-    };
-    Action.prototype.applyMiddleware = function (middleware) {
-        return this.create(__assign({}, this.props, { middleware: this.props.middleware ? [middleware].concat(this.props.middleware) : [middleware] }));
-    };
-    Action.prototype.pipe = function () {
-        var funcs = [];
-        for (var _i = 0; _i < arguments.length; _i++) {
-            funcs[_i] = arguments[_i];
+            mixerIndex = i - 1;
         }
-        var pipedUpdate = funcs.length === 1 ? funcs[0] : pipe.apply(void 0, funcs);
-        return this.applyMiddleware(function (update) {
-            return function (v) {
-                return update(pipedUpdate(v));
-            };
-        });
+        var progressInRange = progress(input[mixerIndex], input[mixerIndex + 1], v);
+        return mixers[mixerIndex](progressInRange);
     };
-    return Action;
-}();
-var action = function (init) {
-    return new Action({ init: init });
+}
+function interpolate(input, output, _a) {
+    var _b = _a === void 0 ? {} : _a,
+        _c = _b.clamp,
+        isClamp = _c === void 0 ? true : _c,
+        ease = _b.ease,
+        mixer = _b.mixer;
+    var inputLength = input.length;
+    invariant(inputLength === output.length, 'Both input and output ranges must be the same length');
+    invariant(!ease || !Array.isArray(ease) || ease.length === inputLength - 1, 'Array of easing functions must be of length `input.length - 1`, as it applies to the transitions **between** the defined values.');
+    if (input[0] > input[inputLength - 1]) {
+        input = [].concat(input);
+        output = [].concat(output);
+        input.reverse();
+        output.reverse();
+    }
+    var mixers = createMixers(output, ease, mixer);
+    var interpolator = inputLength === 2 ? fastInterpolate(input, mixers) : slowInterpolate(input, mixers);
+    return isClamp ? function (v) {
+        return interpolator(clamp$1(input[0], input[inputLength - 1], v));
+    } : interpolator;
+}
+
+var reverseEasing = function (easing) {
+    return function (p) {
+        return 1 - easing(1 - p);
+    };
+};
+var mirrorEasing = function (easing) {
+    return function (p) {
+        return p <= 0.5 ? easing(2 * p) / 2 : (2 - easing(2 * (1 - p))) / 2;
+    };
+};
+var createExpoIn = function (power) {
+    return function (p) {
+        return Math.pow(p, power);
+    };
+};
+var createBackIn = function (power) {
+    return function (p) {
+        return p * p * ((power + 1) * p - power);
+    };
+};
+var createAnticipate = function (power) {
+    var backEasing = createBackIn(power);
+    return function (p) {
+        return (p *= 2) < 1 ? 0.5 * backEasing(p) : 0.5 * (2 - Math.pow(2, -10 * (p - 1)));
+    };
 };
 
-var createVectorTests = function (typeTests) {
-    var testNames = Object.keys(typeTests);
-    var isVectorProp = function (prop, key) {
-        return prop !== undefined && !typeTests[key](prop);
-    };
-    var getVectorKeys = function (props) {
-        return testNames.reduce(function (vectorKeys, key) {
-            if (isVectorProp(props[key], key)) vectorKeys.push(key);
-            return vectorKeys;
-        }, []);
-    };
-    var testVectorProps = function (props) {
-        return props && testNames.some(function (key) {
-            return isVectorProp(props[key], key);
-        });
-    };
-    return { getVectorKeys: getVectorKeys, testVectorProps: testVectorProps };
+var DEFAULT_OVERSHOOT_STRENGTH = 1.525;
+var BOUNCE_FIRST_THRESHOLD = 4.0 / 11.0;
+var BOUNCE_SECOND_THRESHOLD = 8.0 / 11.0;
+var BOUNCE_THIRD_THRESHOLD = 9.0 / 10.0;
+var linear = function (p) {
+    return p;
 };
-var unitTypes = [px, percent, degrees, vh, vw];
-var findUnitType = function (prop) {
-    return unitTypes.find(function (type) {
-        return type.test(prop);
+var easeIn = /*#__PURE__*/createExpoIn(2);
+var easeOut = /*#__PURE__*/reverseEasing(easeIn);
+var easeInOut = /*#__PURE__*/mirrorEasing(easeIn);
+var circIn = function (p) {
+    return 1 - Math.sin(Math.acos(p));
+};
+var circOut = /*#__PURE__*/reverseEasing(circIn);
+var circInOut = /*#__PURE__*/mirrorEasing(circOut);
+var backIn = /*#__PURE__*/createBackIn(DEFAULT_OVERSHOOT_STRENGTH);
+var backOut = /*#__PURE__*/reverseEasing(backIn);
+var backInOut = /*#__PURE__*/mirrorEasing(backIn);
+var anticipate = /*#__PURE__*/createAnticipate(DEFAULT_OVERSHOOT_STRENGTH);
+var ca = 4356.0 / 361.0;
+var cb = 35442.0 / 1805.0;
+var cc = 16061.0 / 1805.0;
+var bounceOut = function (p) {
+    if (p === 1 || p === 0) return p;
+    var p2 = p * p;
+    return p < BOUNCE_FIRST_THRESHOLD ? 7.5625 * p2 : p < BOUNCE_SECOND_THRESHOLD ? 9.075 * p2 - 9.9 * p + 3.4 : p < BOUNCE_THIRD_THRESHOLD ? ca * p2 - cb * p + cc : 10.8 * p * p - 20.52 * p + 10.72;
+};
+var bounceIn = /*#__PURE__*/reverseEasing(bounceOut);
+var bounceInOut = function (p) {
+    return p < 0.5 ? 0.5 * (1.0 - bounceOut(1.0 - p * 2.0)) : 0.5 * bounceOut(p * 2.0 - 1.0) + 0.5;
+};
+
+function defaultEasing(values, easing) {
+    return values.map(function () {
+        return easing || easeInOut;
+    }).splice(0, values.length - 1);
+}
+function defaultOffset(values) {
+    var numValues = values.length;
+    return values.map(function (_value, i) {
+        return i !== 0 ? i / (numValues - 1) : 0;
     });
+}
+function convertOffsetToTimes(offset, duration) {
+    return offset.map(function (o) {
+        return o * duration;
+    });
+}
+function keyframes(_a) {
+    var _b = _a.from,
+        from = _b === void 0 ? 0 : _b,
+        _c = _a.to,
+        to = _c === void 0 ? 1 : _c,
+        ease = _a.ease,
+        offset = _a.offset,
+        _d = _a.duration,
+        duration = _d === void 0 ? 300 : _d;
+    var state = { done: false, value: from };
+    var values = Array.isArray(to) ? to : [from, to];
+    var times = convertOffsetToTimes(offset !== null && offset !== void 0 ? offset : defaultOffset(values), duration);
+    function createInterpolator() {
+        return interpolate(times, values, {
+            ease: Array.isArray(ease) ? ease : defaultEasing(values, ease)
+        });
+    }
+    var interpolator = createInterpolator();
+    return {
+        next: function (t) {
+            state.value = interpolator(t);
+            state.done = t >= duration;
+            return state;
+        },
+        flipTarget: function () {
+            values.reverse();
+            interpolator = createInterpolator();
+        }
+    };
+}
+
+function decay(_a) {
+    var _b = _a.velocity,
+        velocity = _b === void 0 ? 0 : _b,
+        _c = _a.from,
+        from = _c === void 0 ? 0 : _c,
+        _d = _a.power,
+        power = _d === void 0 ? 0.8 : _d,
+        _e = _a.timeConstant,
+        timeConstant = _e === void 0 ? 350 : _e,
+        _f = _a.restDelta,
+        restDelta = _f === void 0 ? 0.5 : _f,
+        modifyTarget = _a.modifyTarget;
+    var state = { done: false, value: from };
+    var amplitude = power * velocity;
+    var ideal = from + amplitude;
+    var target = modifyTarget === undefined ? ideal : modifyTarget(ideal);
+    if (target !== ideal) amplitude = target - from;
+    return {
+        next: function (t) {
+            var delta = -amplitude * Math.exp(-t / timeConstant);
+            state.done = !(delta > restDelta || delta < -restDelta);
+            state.value = state.done ? target : target + delta;
+            return state;
+        },
+        flipTarget: function () {}
+    };
+}
+
+var types = { keyframes: keyframes, spring: spring, decay: decay };
+function detectAnimationFromOptions(config) {
+    if (Array.isArray(config.to)) {
+        return keyframes;
+    } else if (types[config.type]) {
+        return types[config.type];
+    }
+    var keys = new Set(Object.keys(config));
+    if (keys.has("ease") || keys.has("duration")) {
+        return keyframes;
+    } else if (keys.has("stiffness") || keys.has("mass") || keys.has("damping") || keys.has("restSpeed") || keys.has("restDelta")) {
+        return spring;
+    }
+    return keyframes;
+}
+
+function loopElapsed(elapsed, duration, delay) {
+    if (delay === void 0) {
+        delay = 0;
+    }
+    return elapsed - duration - delay;
+}
+function reverseElapsed(elapsed, duration, delay, isForwardPlayback) {
+    if (delay === void 0) {
+        delay = 0;
+    }
+    if (isForwardPlayback === void 0) {
+        isForwardPlayback = true;
+    }
+    return isForwardPlayback ? loopElapsed(duration + -elapsed, duration, delay) : duration - (elapsed - duration) + delay;
+}
+function hasRepeatDelayElapsed(elapsed, duration, delay, isForwardPlayback) {
+    return isForwardPlayback ? elapsed >= duration + delay : elapsed <= -delay;
+}
+
+var framesync = function (update) {
+    var passTimestamp = function (_a) {
+        var delta = _a.delta;
+        return update(delta);
+    };
+    return {
+        start: function () {
+            return sync.update(passTimestamp, true, true);
+        },
+        stop: function () {
+            return cancelSync.update(passTimestamp);
+        }
+    };
 };
-var isUnitProp = function (prop) {
-    return Boolean(findUnitType(prop));
-};
-var createAction = function (action, props) {
-    return action(props);
-};
-var createUnitAction = function (action, _a) {
+function animate(_a) {
+    var _b, _c;
     var from = _a.from,
-        to = _a.to,
-        props = __rest(_a, ["from", "to"]);
-    var unitType = findUnitType(from) || findUnitType(to);
-    var transform = unitType.transform,
-        parse = unitType.parse;
-    return action(__assign({}, props, { from: typeof from === 'string' ? parse(from) : from, to: typeof to === 'string' ? parse(to) : to })).pipe(transform);
-};
-var createMixerAction = function (mixer) {
-    return function (action, _a) {
-        var from = _a.from,
-            to = _a.to,
-            props = __rest(_a, ["from", "to"]);
-        return action(__assign({}, props, { from: 0, to: 1 })).pipe(mixer(from, to));
-    };
-};
-var createColorAction = /*#__PURE__*/createMixerAction(mixColor);
-var createComplexAction = /*#__PURE__*/createMixerAction(mixComplex);
-var createVectorAction = function (action, typeTests) {
-    var _a = createVectorTests(typeTests),
-        testVectorProps = _a.testVectorProps,
-        getVectorKeys = _a.getVectorKeys;
-    var vectorAction = function (props) {
-        var isVector = testVectorProps(props);
-        if (!isVector) return action(props);
-        var vectorKeys = getVectorKeys(props);
-        var testKey = vectorKeys[0];
-        var testProp = props[testKey];
-        return getActionCreator(testProp)(action, props, vectorKeys);
-    };
-    return vectorAction;
-};
-var getActionCreator = function (prop) {
-    if (typeof prop === 'number') {
-        return createAction;
-    } else if (isUnitProp(prop)) {
-        return createUnitAction;
-    } else if (color.test(prop)) {
-        return createColorAction;
-    } else if (complex.test(prop)) {
-        return createComplexAction;
-    } else {
-        return createAction;
+        _d = _a.autoplay,
+        autoplay = _d === void 0 ? true : _d,
+        _e = _a.driver,
+        driver = _e === void 0 ? framesync : _e,
+        _f = _a.elapsed,
+        elapsed = _f === void 0 ? 0 : _f,
+        _g = _a.repeat,
+        repeatMax = _g === void 0 ? 0 : _g,
+        _h = _a.repeatType,
+        repeatType = _h === void 0 ? "loop" : _h,
+        _j = _a.repeatDelay,
+        repeatDelay = _j === void 0 ? 0 : _j,
+        onPlay = _a.onPlay,
+        onStop = _a.onStop,
+        onComplete = _a.onComplete,
+        onRepeat = _a.onRepeat,
+        onUpdate = _a.onUpdate,
+        options = __rest(_a, ["from", "autoplay", "driver", "elapsed", "repeat", "repeatType", "repeatDelay", "onPlay", "onStop", "onComplete", "onRepeat", "onUpdate"]);
+    var to = options.to;
+    var driverControls;
+    var repeatCount = 0;
+    var computedDuration = options.duration;
+    var latest;
+    var isComplete = false;
+    var isForwardPlayback = true;
+    var interpolateFromNumber;
+    var animator = detectAnimationFromOptions(options);
+    if ((_c = (_b = animator).needsInterpolation) === null || _c === void 0 ? void 0 : _c.call(_b, from, to)) {
+        interpolateFromNumber = interpolate([0, 100], [from, to], {
+            clamp: false
+        });
+        from = 0;
+        to = 100;
     }
-};
-
-var decay = function (props) {
-    if (props === void 0) {
-        props = {};
+    var animation = animator(__assign(__assign({}, options), { from: from, to: to }));
+    function repeat() {
+        repeatCount++;
+        if (repeatType === "reverse") {
+            isForwardPlayback = repeatCount % 2 === 0;
+            elapsed = reverseElapsed(elapsed, computedDuration, repeatDelay, isForwardPlayback);
+        } else {
+            elapsed = loopElapsed(elapsed, computedDuration, repeatDelay);
+            if (repeatType === "mirror") animation.flipTarget();
+        }
+        isComplete = false;
+        onRepeat && onRepeat();
     }
-    return action(function (_a) {
-        var complete = _a.complete,
-            update = _a.update;
-        var _b = props.velocity,
-            velocity = _b === void 0 ? 0 : _b,
-            _c = props.from,
-            from = _c === void 0 ? 0 : _c,
-            _d = props.power,
-            power = _d === void 0 ? 0.8 : _d,
-            _e = props.timeConstant,
-            timeConstant = _e === void 0 ? 350 : _e,
-            _f = props.restDelta,
-            restDelta = _f === void 0 ? 0.5 : _f,
-            modifyTarget = props.modifyTarget;
-        var elapsed = 0;
-        var amplitude = power * velocity;
-        var idealTarget = Math.round(from + amplitude);
-        var target = typeof modifyTarget === 'undefined' ? idealTarget : modifyTarget(idealTarget);
-        var process = sync.update(function (_a) {
-            var frameDelta = _a.delta;
-            elapsed += frameDelta;
-            var delta = -amplitude * Math.exp(-elapsed / timeConstant);
-            var isMoving = delta > restDelta || delta < -restDelta;
-            var current = isMoving ? target + delta : target;
-            update(current);
-            if (!isMoving) {
-                cancelSync.update(process);
+    function complete() {
+        driverControls.stop();
+        onComplete && onComplete();
+    }
+    function update(delta) {
+        if (!isForwardPlayback) delta = -delta;
+        elapsed += delta;
+        if (!isComplete) {
+            var state = animation.next(Math.max(0, elapsed));
+            latest = state.value;
+            if (interpolateFromNumber) latest = interpolateFromNumber(latest);
+            isComplete = isForwardPlayback ? state.done : elapsed <= 0;
+        }
+        onUpdate === null || onUpdate === void 0 ? void 0 : onUpdate(latest);
+        if (isComplete) {
+            if (repeatCount === 0) computedDuration !== null && computedDuration !== void 0 ? computedDuration : computedDuration = elapsed;
+            if (repeatCount < repeatMax) {
+                hasRepeatDelayElapsed(elapsed, computedDuration, repeatDelay, isForwardPlayback) && repeat();
+            } else {
                 complete();
             }
-        }, true);
-        return {
-            stop: function () {
-                return cancelSync.update(process);
-            }
-        };
-    });
-};
-var vectorDecay = /*#__PURE__*/createVectorAction(decay, {
-    from: number.test,
-    modifyTarget: function (func) {
-        return typeof func === 'function';
-    },
-    velocity: number.test
-});
-
-var spring = function (props) {
-    if (props === void 0) {
-        props = {};
+        }
     }
-    return action(function (_a) {
-        var update = _a.update,
-            complete = _a.complete;
-        var _b = props.velocity,
-            velocity = _b === void 0 ? 0.0 : _b;
-        var _c = props.from,
-            from = _c === void 0 ? 0.0 : _c,
-            _d = props.to,
-            to = _d === void 0 ? 0.0 : _d,
-            _e = props.stiffness,
-            stiffness = _e === void 0 ? 100 : _e,
-            _f = props.damping,
-            damping = _f === void 0 ? 10 : _f,
-            _g = props.mass,
-            mass = _g === void 0 ? 1.0 : _g,
-            _h = props.restSpeed,
-            restSpeed = _h === void 0 ? 0.01 : _h,
-            _j = props.restDelta,
-            restDelta = _j === void 0 ? 0.01 : _j;
-        var initialVelocity = velocity ? -(velocity / 1000) : 0.0;
-        var t = 0;
-        var delta = to - from;
-        var position = from;
-        var prevPosition = position;
-        var process = sync.update(function (_a) {
-            var timeDelta = _a.delta;
-            t += timeDelta;
-            var dampingRatio = damping / (2 * Math.sqrt(stiffness * mass));
-            var angularFreq = Math.sqrt(stiffness / mass) / 1000;
-            prevPosition = position;
-            if (dampingRatio < 1) {
-                var envelope = Math.exp(-dampingRatio * angularFreq * t);
-                var expoDecay = angularFreq * Math.sqrt(1.0 - dampingRatio * dampingRatio);
-                position = to - envelope * ((initialVelocity + dampingRatio * angularFreq * delta) / expoDecay * Math.sin(expoDecay * t) + delta * Math.cos(expoDecay * t));
-            } else {
-                var envelope = Math.exp(-angularFreq * t);
-                position = to - envelope * (delta + (initialVelocity + angularFreq * delta) * t);
-            }
-            velocity = velocityPerSecond(position - prevPosition, timeDelta);
-            var isBelowVelocityThreshold = Math.abs(velocity) <= restSpeed;
-            var isBelowDisplacementThreshold = Math.abs(to - position) <= restDelta;
-            if (isBelowVelocityThreshold && isBelowDisplacementThreshold) {
-                position = to;
-                update(position);
-                cancelSync.update(process);
-                complete();
-            } else {
-                update(position);
-            }
-        }, true);
-        return {
-            stop: function () {
-                return cancelSync.update(process);
-            }
-        };
-    });
-};
-var vectorSpring = /*#__PURE__*/createVectorAction(spring, {
-    from: number.test,
-    to: number.test,
-    stiffness: number.test,
-    damping: number.test,
-    mass: number.test,
-    velocity: number.test
-});
+    function play() {
+        onPlay === null || onPlay === void 0 ? void 0 : onPlay();
+        driverControls = driver(update);
+        driverControls.start();
+    }
+    autoplay && play();
+    return {
+        stop: function () {
+            onStop === null || onStop === void 0 ? void 0 : onStop();
+            driverControls.stop();
+        }
+    };
+}
 
-var inertia = function (_a) {
+function velocityPerSecond(velocity, frameDuration) {
+    return frameDuration ? velocity * (1000 / frameDuration) : 0;
+}
+
+function inertia(_a) {
     var _b = _a.from,
         from = _b === void 0 ? 0 : _b,
         _c = _a.velocity,
@@ -5586,382 +5518,215 @@ var inertia = function (_a) {
         _d = _a.power,
         power = _d === void 0 ? 0.8 : _d,
         _e = _a.timeConstant,
-        timeConstant = _e === void 0 ? 700 : _e,
+        timeConstant = _e === void 0 ? 750 : _e,
         _f = _a.bounceStiffness,
         bounceStiffness = _f === void 0 ? 500 : _f,
         _g = _a.bounceDamping,
         bounceDamping = _g === void 0 ? 10 : _g,
         _h = _a.restDelta,
         restDelta = _h === void 0 ? 1 : _h,
-        modifyTarget = _a.modifyTarget;
-    return action(function (_a) {
-        var update = _a.update,
-            complete = _a.complete;
-        var prev = from;
-        var current = from;
-        var activeAnimation;
-        var isSpring = false;
-        var isLessThanMin = function (v) {
-            return min !== undefined && v <= min;
-        };
-        var isMoreThanMax = function (v) {
-            return max !== undefined && v >= max;
-        };
-        var isOutOfBounds = function (v) {
-            return isLessThanMin(v) || isMoreThanMax(v);
-        };
-        var isTravellingAwayFromBounds = function (v, currentVelocity) {
-            return isLessThanMin(v) && currentVelocity < 0 || isMoreThanMax(v) && currentVelocity > 0;
-        };
-        var onUpdate = function (v) {
-            update(v);
-            prev = current;
-            current = v;
-            velocity = velocityPerSecond(current - prev, getFrameData().delta);
-            if (activeAnimation && !isSpring && isTravellingAwayFromBounds(v, velocity)) {
-                startSpring({ from: v, velocity: velocity });
-            }
-        };
-        var startAnimation = function (animation, next) {
-            activeAnimation && activeAnimation.stop();
-            activeAnimation = animation.start({
-                update: onUpdate,
-                complete: function () {
-                    if (next) {
-                        next();
-                        return;
-                    }
-                    complete();
-                }
-            });
-        };
-        var startSpring = function (props) {
-            isSpring = true;
-            startAnimation(vectorSpring(__assign({}, props, { to: isLessThanMin(props.from) ? min : max, stiffness: bounceStiffness, damping: bounceDamping, restDelta: restDelta })));
-        };
-        if (isOutOfBounds(from)) {
-            startSpring({ from: from, velocity: velocity });
-        } else if (velocity !== 0) {
-            var animation = vectorDecay({
-                from: from,
-                velocity: velocity,
-                timeConstant: timeConstant,
-                power: power,
-                restDelta: isOutOfBounds(from) ? 20 : restDelta,
-                modifyTarget: modifyTarget
-            });
-            startAnimation(animation, function () {
-                if (isOutOfBounds(current)) {
-                    startSpring({ from: current, velocity: velocity });
-                } else {
-                    complete();
-                }
-            });
-        } else {
-            complete();
-        }
-        return {
-            stop: function () {
-                return activeAnimation && activeAnimation.stop();
-            }
-        };
-    });
-};
-var index = /*#__PURE__*/createVectorAction(inertia, {
-    from: number.test,
-    velocity: number.test,
-    min: number.test,
-    max: number.test,
-    damping: number.test,
-    stiffness: number.test,
-    modifyTarget: function (func) {
-        return typeof func === 'function';
+        modifyTarget = _a.modifyTarget,
+        driver = _a.driver,
+        onUpdate = _a.onUpdate,
+        onComplete = _a.onComplete;
+    var currentAnimation;
+    function isOutOfBounds(v) {
+        return min !== undefined && v < min || max !== undefined && v > max;
     }
-});
-
-var scrubber = function (_a) {
-    var _b = _a.from,
-        from = _b === void 0 ? 0 : _b,
-        _c = _a.to,
-        to = _c === void 0 ? 1 : _c,
-        _d = _a.ease,
-        ease = _d === void 0 ? linear : _d,
-        _e = _a.reverseEase,
-        reverseEase = _e === void 0 ? false : _e;
-    if (reverseEase) {
-        ease = createReversedEasing(ease);
+    function boundaryNearest(v) {
+        if (min === undefined) return max;
+        if (max === undefined) return min;
+        return Math.abs(min - v) < Math.abs(max - v) ? min : max;
     }
-    return action(function (_a) {
-        var update = _a.update;
-        return {
-            seek: function (progress) {
-                return update(progress);
-            }
-        };
-    }).pipe(ease, function (v) {
-        return mix(from, to, v);
-    });
-};
-var vectorScrubber = /*#__PURE__*/createVectorAction(scrubber, {
-    ease: function (func) {
-        return typeof func === 'function';
-    },
-    from: number.test,
-    to: number.test
-});
-
-var clampProgress$1 = /*#__PURE__*/clamp$1$1(0, 1);
-var tween = function (props) {
-    if (props === void 0) {
-        props = {};
+    function startAnimation(options) {
+        currentAnimation === null || currentAnimation === void 0 ? void 0 : currentAnimation.stop();
+        currentAnimation = animate(__assign(__assign({}, options), { driver: driver, onUpdate: function (v) {
+                var _a;
+                onUpdate === null || onUpdate === void 0 ? void 0 : onUpdate(v);
+                (_a = options.onUpdate) === null || _a === void 0 ? void 0 : _a.call(options, v);
+            }, onComplete: onComplete }));
     }
-    return action(function (_a) {
-        var update = _a.update,
-            complete = _a.complete;
-        var _b = props.duration,
-            duration = _b === void 0 ? 300 : _b,
-            _c = props.ease,
-            ease = _c === void 0 ? easeOut : _c,
-            _d = props.flip,
-            flip = _d === void 0 ? 0 : _d,
-            _e = props.loop,
-            loop = _e === void 0 ? 0 : _e,
-            _f = props.yoyo,
-            yoyo = _f === void 0 ? 0 : _f,
-            _g = props.repeatDelay,
-            repeatDelay = _g === void 0 ? 0 : _g;
-        var _h = props.from,
-            from = _h === void 0 ? 0 : _h,
-            _j = props.to,
-            to = _j === void 0 ? 1 : _j,
-            _k = props.elapsed,
-            elapsed = _k === void 0 ? 0 : _k,
-            _l = props.flipCount,
-            flipCount = _l === void 0 ? 0 : _l,
-            _m = props.yoyoCount,
-            yoyoCount = _m === void 0 ? 0 : _m,
-            _o = props.loopCount,
-            loopCount = _o === void 0 ? 0 : _o;
-        var playhead = vectorScrubber({ from: from, to: to, ease: ease }).start(update);
-        var currentProgress = 0;
-        var process;
-        var isActive = false;
-        var reverseAnimation = function (reverseEase) {
-            var _a;
-            if (reverseEase === void 0) {
-                reverseEase = false;
-            }
-            _a = [to, from], from = _a[0], to = _a[1];
-            playhead = vectorScrubber({ from: from, to: to, ease: ease, reverseEase: reverseEase }).start(update);
-        };
-        var isTweenComplete = function () {
-            var isComplete = isActive && elapsed > duration + repeatDelay;
-            if (!isComplete) return false;
-            if (isComplete && !loop && !flip && !yoyo) return true;
-            var overtime = elapsed - duration;
-            elapsed = overtime - repeatDelay;
-            if (loop && loopCount < loop) {
-                loopCount++;
-                return false;
-            } else if (flip && flipCount < flip) {
-                flipCount++;
-                reverseAnimation();
-                return false;
-            } else if (yoyo && yoyoCount < yoyo) {
-                yoyoCount++;
-                reverseAnimation(yoyoCount % 2 !== 0);
-                return false;
-            }
-            return true;
-        };
-        var updateTween = function () {
-            currentProgress = clampProgress$1(progress(0, duration, elapsed));
-            playhead.seek(currentProgress);
-        };
-        var startTimer = function () {
-            isActive = true;
-            process = sync.update(function (_a) {
-                var delta = _a.delta;
-                elapsed += delta;
-                updateTween();
-                if (isTweenComplete()) {
-                    cancelSync.update(process);
-                    complete && sync.update(complete, false, true);
-                }
-            }, true);
-        };
-        var stopTimer = function () {
-            isActive = false;
-            if (process) cancelSync.update(process);
-        };
-        startTimer();
-        return {
-            isActive: function () {
-                return isActive;
-            },
-            getElapsed: function () {
-                return clamp$1$1(0, duration, elapsed);
-            },
-            getProgress: function () {
-                return currentProgress;
-            },
-            stop: function () {
-                stopTimer();
-            },
-            pause: function () {
-                stopTimer();
-                return this;
-            },
-            resume: function () {
-                if (!isActive) startTimer();
-                return this;
-            },
-            seek: function (newProgress) {
-                elapsed = mix(0, duration, newProgress);
-                sync.update(updateTween, false, true);
-                return this;
-            },
-            reverse: function () {
-                reverseAnimation();
-                return this;
+    function startSpring(options) {
+        startAnimation(__assign({ type: "spring", stiffness: bounceStiffness, damping: bounceDamping, restDelta: restDelta }, options));
+    }
+    if (isOutOfBounds(from)) {
+        startSpring({ from: from, velocity: velocity, to: boundaryNearest(from) });
+    } else {
+        var target = power * velocity + from;
+        if (typeof modifyTarget !== "undefined") target = modifyTarget(target);
+        var boundary_1 = boundaryNearest(target);
+        var heading_1 = boundary_1 === min ? -1 : 1;
+        var prev_1;
+        var current_1;
+        var checkBoundary = function (v) {
+            prev_1 = current_1;
+            current_1 = v;
+            velocity = velocityPerSecond(v - prev_1, getFrameData().delta);
+            if (heading_1 === 1 && v > boundary_1 || heading_1 === -1 && v < boundary_1) {
+                startSpring({ from: v, to: boundary_1, velocity: velocity });
             }
         };
-    });
-};
-
-var clampProgress$1$1 = /*#__PURE__*/clamp$1$1(0, 1);
-var defaultEasings = function (values, easing) {
-    return values.map(function () {
-        return easing || easeOut;
-    }).splice(0, values.length - 1);
-};
-var defaultTimings = function (values) {
-    var numValues = values.length;
-    return values.map(function (value, i) {
-        return i !== 0 ? i / (numValues - 1) : 0;
-    });
-};
-var interpolateScrubbers = function (input, scrubbers, update) {
-    var rangeLength = input.length;
-    var finalInputIndex = rangeLength - 1;
-    var finalScrubberIndex = finalInputIndex - 1;
-    var subs = scrubbers.map(function (scrub) {
-        return scrub.start(update);
-    });
-    return function (v) {
-        if (v <= input[0]) {
-            subs[0].seek(0);
-        }
-        if (v >= input[finalInputIndex]) {
-            subs[finalScrubberIndex].seek(1);
-        }
-        var i = 1;
-        for (; i < rangeLength; i++) {
-            if (input[i] > v || i === finalInputIndex) break;
-        }
-        var progressInRange = progress(input[i - 1], input[i], v);
-        subs[i - 1].seek(clampProgress$1$1(progressInRange));
-    };
-};
-var keyframes = function (_a) {
-    var easings = _a.easings,
-        _b = _a.ease,
-        ease = _b === void 0 ? linear : _b,
-        times = _a.times,
-        values = _a.values,
-        tweenProps = __rest(_a, ["easings", "ease", "times", "values"]);
-    easings = Array.isArray(easings) ? easings : defaultEasings(values, easings);
-    times = times || defaultTimings(values);
-    var scrubbers = easings.map(function (easing, i) {
-        return vectorScrubber({
-            from: values[i],
-            to: values[i + 1],
-            ease: easing
+        startAnimation({
+            type: "decay",
+            from: from,
+            velocity: velocity,
+            timeConstant: timeConstant,
+            power: power,
+            restDelta: restDelta,
+            modifyTarget: modifyTarget,
+            onUpdate: isOutOfBounds(target) ? checkBoundary : undefined
         });
-    });
-    return tween(__assign({}, tweenProps, { ease: ease })).applyMiddleware(function (update) {
-        return interpolateScrubbers(times, scrubbers, update);
-    });
-};
-
-var listen = function (element, events, options) {
-    return action(function (_a) {
-        var update = _a.update;
-        var eventNames = events.split(' ').map(function (eventName) {
-            element.addEventListener(eventName, update, options);
-            return eventName;
-        });
-        return {
-            stop: function () {
-                return eventNames.forEach(function (eventName) {
-                    return element.removeEventListener(eventName, update, options);
-                });
-            }
-        };
-    });
-};
-
-var defaultPointerPos = function () {
+    }
     return {
-        clientX: 0,
-        clientY: 0,
-        pageX: 0,
-        pageY: 0,
-        x: 0,
-        y: 0
-    };
-};
-var eventToPoint = function (e, point) {
-    if (point === void 0) {
-        point = defaultPointerPos();
-    }
-    point.clientX = point.x = e.clientX;
-    point.clientY = point.y = e.clientY;
-    point.pageX = e.pageX;
-    point.pageY = e.pageY;
-    return point;
-};
-
-var points = [/*#__PURE__*/defaultPointerPos()];
-if (typeof document !== 'undefined') {
-    var updatePointsLocation = function (_a) {
-        var touches = _a.touches;
-        var numTouches = touches.length;
-        points.length = 0;
-        for (var i = 0; i < numTouches; i++) {
-            var thisTouch = touches[i];
-            points.push(eventToPoint(thisTouch));
+        stop: function () {
+            return currentAnimation === null || currentAnimation === void 0 ? void 0 : currentAnimation.stop();
         }
     };
-    listen(document, 'touchstart touchmove', {
-        passive: true,
-        capture: true
-    }).start(updatePointsLocation);
 }
 
-var point = /*#__PURE__*/defaultPointerPos();
-if (typeof document !== 'undefined') {
-    var updatePointLocation = function (e) {
-        eventToPoint(e, point);
-    };
-    listen(document, 'mousedown mousemove', true).start(updatePointLocation);
-}
-
-var delay = function (timeToDelay) {
-    return action(function (_a) {
-        var complete = _a.complete;
-        var timeout = setTimeout(complete, timeToDelay);
-        return {
-            stop: function () {
-                return clearTimeout(timeout);
-            }
-        };
-    });
+var isPoint = function (point) {
+    return point.hasOwnProperty('x') && point.hasOwnProperty('y');
 };
+
+var isPoint3D = function (point) {
+    return isPoint(point) && point.hasOwnProperty('z');
+};
+
+var distance1D = function (a, b) {
+    return Math.abs(a - b);
+};
+function distance(a, b) {
+    if (isNum(a) && isNum(b)) {
+        return distance1D(a, b);
+    } else if (isPoint(a) && isPoint(b)) {
+        var xDelta = distance1D(a.x, b.x);
+        var yDelta = distance1D(a.y, b.y);
+        var zDelta = isPoint3D(a) && isPoint3D(b) ? distance1D(a.z, b.z) : 0;
+        return Math.sqrt(Math.pow(xDelta, 2) + Math.pow(yDelta, 2) + Math.pow(zDelta, 2));
+    }
+}
+
+var a = function (a1, a2) {
+    return 1.0 - 3.0 * a2 + 3.0 * a1;
+};
+var b$1 = function (a1, a2) {
+    return 3.0 * a2 - 6.0 * a1;
+};
+var c$1 = function (a1) {
+    return 3.0 * a1;
+};
+var calcBezier = function (t, a1, a2) {
+    return ((a(a1, a2) * t + b$1(a1, a2)) * t + c$1(a1)) * t;
+};
+var getSlope = function (t, a1, a2) {
+    return 3.0 * a(a1, a2) * t * t + 2.0 * b$1(a1, a2) * t + c$1(a1);
+};
+var subdivisionPrecision = 0.0000001;
+var subdivisionMaxIterations = 10;
+function binarySubdivide(aX, aA, aB, mX1, mX2) {
+    var currentX;
+    var currentT;
+    var i = 0;
+    do {
+        currentT = aA + (aB - aA) / 2.0;
+        currentX = calcBezier(currentT, mX1, mX2) - aX;
+        if (currentX > 0.0) {
+            aB = currentT;
+        } else {
+            aA = currentT;
+        }
+    } while (Math.abs(currentX) > subdivisionPrecision && ++i < subdivisionMaxIterations);
+    return currentT;
+}
+var newtonIterations = 8;
+var newtonMinSlope = 0.001;
+function newtonRaphsonIterate(aX, aGuessT, mX1, mX2) {
+    for (var i = 0; i < newtonIterations; ++i) {
+        var currentSlope = getSlope(aGuessT, mX1, mX2);
+        if (currentSlope === 0.0) {
+            return aGuessT;
+        }
+        var currentX = calcBezier(aGuessT, mX1, mX2) - aX;
+        aGuessT -= currentX / currentSlope;
+    }
+    return aGuessT;
+}
+var kSplineTableSize = 11;
+var kSampleStepSize = 1.0 / (kSplineTableSize - 1.0);
+function cubicBezier(mX1, mY1, mX2, mY2) {
+    if (mX1 === mY1 && mX2 === mY2) return linear;
+    var sampleValues = new Float32Array(kSplineTableSize);
+    for (var i = 0; i < kSplineTableSize; ++i) {
+        sampleValues[i] = calcBezier(i * kSampleStepSize, mX1, mX2);
+    }
+    function getTForX(aX) {
+        var intervalStart = 0.0;
+        var currentSample = 1;
+        var lastSample = kSplineTableSize - 1;
+        for (; currentSample !== lastSample && sampleValues[currentSample] <= aX; ++currentSample) {
+            intervalStart += kSampleStepSize;
+        }
+        --currentSample;
+        var dist = (aX - sampleValues[currentSample]) / (sampleValues[currentSample + 1] - sampleValues[currentSample]);
+        var guessForT = intervalStart + dist * kSampleStepSize;
+        var initialSlope = getSlope(guessForT, mX1, mX2);
+        if (initialSlope >= newtonMinSlope) {
+            return newtonRaphsonIterate(aX, guessForT, mX1, mX2);
+        } else if (initialSlope === 0.0) {
+            return guessForT;
+        } else {
+            return binarySubdivide(aX, intervalStart, intervalStart + kSampleStepSize, mX1, mX2);
+        }
+    }
+    return function (t) {
+        return t === 0 || t === 1 ? t : calcBezier(getTForX(t), mY1, mY2);
+    };
+}
 
 var isRefObject = function (ref) {
     return typeof ref === "object" && ref.hasOwnProperty("current");
 };
+
+/**
+ * A generic subscription manager.
+ */
+var SubscriptionManager = /** @class */ (function () {
+    function SubscriptionManager() {
+        this.subscriptions = new Set();
+    }
+    SubscriptionManager.prototype.add = function (handler) {
+        var _this = this;
+        this.subscriptions.add(handler);
+        return function () { return void _this.subscriptions.delete(handler); };
+    };
+    SubscriptionManager.prototype.notify = function (
+    /**
+     * Using ...args would be preferable but it's array creation and this
+     * might be fired every frame.
+     */
+    a, b, c) {
+        var e_1, _a;
+        if (!this.subscriptions.size)
+            return;
+        try {
+            for (var _b = __values(this.subscriptions), _c = _b.next(); !_c.done; _c = _b.next()) {
+                var handler = _c.value;
+                handler(a, b, c);
+            }
+        }
+        catch (e_1_1) { e_1 = { error: e_1_1 }; }
+        finally {
+            try {
+                if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
+            }
+            finally { if (e_1) throw e_1.error; }
+        }
+    };
+    SubscriptionManager.prototype.clear = function () {
+        this.subscriptions.clear();
+    };
+    return SubscriptionManager;
+}());
 
 var isFloat = function (value) {
     return !isNaN(parseFloat(value));
@@ -5995,6 +5760,18 @@ var MotionValue = /** @class */ (function () {
          */
         this.lastUpdated = 0;
         /**
+         * Functions to notify when the `MotionValue` updates.
+         *
+         * @internal
+         */
+        this.updateSubscribers = new SubscriptionManager();
+        /**
+         * Functions to notify when the `MotionValue` updates and `render` is set to `true`.
+         *
+         * @internal
+         */
+        this.renderSubscribers = new SubscriptionManager();
+        /**
          * Tracks whether this value can output a velocity. Currently this is only true
          * if the value is numerical, but we might be able to widen the scope here and support
          * other value types.
@@ -6006,11 +5783,11 @@ var MotionValue = /** @class */ (function () {
             if (render === void 0) { render = true; }
             _this.prev = _this.current;
             _this.current = v;
-            if (_this.updateSubscribers && _this.prev !== _this.current) {
-                _this.updateSubscribers.forEach(_this.notifySubscriber);
+            if (_this.prev !== _this.current) {
+                _this.updateSubscribers.notify(_this.current);
             }
-            if (render && _this.renderSubscribers) {
-                _this.renderSubscribers.forEach(_this.notifySubscriber);
+            if (render) {
+                _this.renderSubscribers.notify(_this.current);
             }
             // Update timestamp
             var _a = getFrameData(), delta = _a.delta, timestamp = _a.timestamp;
@@ -6019,19 +5796,6 @@ var MotionValue = /** @class */ (function () {
                 _this.lastUpdated = timestamp;
                 sync.postRender(_this.scheduleVelocityCheck);
             }
-        };
-        /**
-         * Notify a subscriber with the latest value.
-         *
-         * This is an instanced and bound function to prevent generating a new
-         * function once per frame.
-         *
-         * @param subscriber - The subscriber to notify.
-         *
-         * @internal
-         */
-        this.notifySubscriber = function (subscriber) {
-            subscriber(_this.current);
         };
         /**
          * Schedule a velocity check for the next frame.
@@ -6060,18 +5824,6 @@ var MotionValue = /** @class */ (function () {
         this.set(init, false);
         this.canTrackVelocity = isFloat(this.current);
     }
-    /**
-     * Subscribes a subscriber function to a subscription list.
-     *
-     * @param subscriptions - A `Set` of subscribers.
-     * @param subscription - A subscriber function.
-     */
-    MotionValue.prototype.subscribeTo = function (subscriptions, subscription) {
-        var _this = this;
-        var updateSubscriber = function () { return subscription(_this.current); };
-        subscriptions.add(updateSubscriber);
-        return function () { return subscriptions.delete(updateSubscriber); };
-    };
     /**
      * Adds a function that will be notified when the `MotionValue` is updated.
      *
@@ -6151,13 +5903,10 @@ var MotionValue = /** @class */ (function () {
      * @public
      */
     MotionValue.prototype.onChange = function (subscription) {
-        if (!this.updateSubscribers)
-            this.updateSubscribers = new Set();
-        return this.subscribeTo(this.updateSubscribers, subscription);
+        return this.updateSubscribers.add(subscription);
     };
     MotionValue.prototype.clearListeners = function () {
-        var _a;
-        (_a = this.updateSubscribers) === null || _a === void 0 ? void 0 : _a.clear();
+        this.updateSubscribers.clear();
     };
     /**
      * Adds a function that will be notified when the `MotionValue` requests a render.
@@ -6168,11 +5917,9 @@ var MotionValue = /** @class */ (function () {
      * @internal
      */
     MotionValue.prototype.onRenderRequest = function (subscription) {
-        if (!this.renderSubscribers)
-            this.renderSubscribers = new Set();
         // Render immediately
-        this.notifySubscriber(subscription);
-        return this.subscribeTo(this.renderSubscribers, subscription);
+        subscription(this.get());
+        return this.renderSubscribers.add(subscription);
     };
     /**
      * Attaches a passive effect to the `MotionValue`.
@@ -6287,8 +6034,8 @@ var MotionValue = /** @class */ (function () {
      * @public
      */
     MotionValue.prototype.destroy = function () {
-        this.updateSubscribers && this.updateSubscribers.clear();
-        this.renderSubscribers && this.renderSubscribers.clear();
+        this.updateSubscribers.clear();
+        this.renderSubscribers.clear();
         this.stop();
     };
     return MotionValue;
@@ -6317,7 +6064,7 @@ var VisualElement = /** @class */ (function () {
         this.latest = {};
         // A map of MotionValues used to animate this element
         this.values = new Map();
-        // Unsubscription callbacks for each MotionValue
+        // Unsubscription callbacks for MotionValue subscriptions
         this.valueSubscriptions = new Map();
         // A configuration for this VisualElement, each derived class can extend this.
         this.config = {};
@@ -6326,7 +6073,6 @@ var VisualElement = /** @class */ (function () {
         this.update = function () { return _this.config.onUpdate(_this.latest); };
         // Pre-bound version of render
         this.triggerRender = function () { return _this.render(); };
-        this.scheduleRender = function () { return sync.render(_this.triggerRender, false, true); };
         // This function gets passed to the rendered component's `ref` prop
         // and is used to mount/unmount the VisualElement
         this.ref = function (element) {
@@ -6340,11 +6086,10 @@ var VisualElement = /** @class */ (function () {
                 _this.externalRef.current = element;
             }
         };
-        // Create a relationship with the provided parent. When we come to replace
-        // the auto-animation stuff with VisualElement we might need to make this
-        // relationship two-way
+        // Create a relationship with the provided parent.
         this.parent = parent;
-        this.treePath = parent ? __spreadArrays(parent.treePath, [parent]) : [];
+        this.rootParent = parent ? parent.rootParent : this;
+        this.treePath = parent ? __spread(parent.treePath, [parent]) : [];
         // Calculate the depth of this node in the VisualElement graph
         this.depth = parent ? parent.depth + 1 : 0;
         // A reference to any externally-defined React ref. This might live better
@@ -6365,17 +6110,16 @@ var VisualElement = /** @class */ (function () {
         if (this.hasValue(key))
             this.removeValue(key);
         this.values.set(key, value);
-        this.latest[key] = value.get();
-        if (this.element)
-            this.subscribeToValue(key, value);
+        this.setSingleStaticValue(key, value.get());
+        this.subscribeToValue(key, value);
     };
     // Remove a MotionValue
     VisualElement.prototype.removeValue = function (key) {
-        var unsubscribe = this.valueSubscriptions.get(key);
-        unsubscribe && unsubscribe();
+        var _a;
+        (_a = this.valueSubscriptions.get(key)) === null || _a === void 0 ? void 0 : _a();
+        this.valueSubscriptions.delete(key);
         this.values.delete(key);
         delete this.latest[key];
-        this.valueSubscriptions.delete(key);
     };
     VisualElement.prototype.getValue = function (key, defaultValue) {
         var value = this.values.get(key);
@@ -6413,16 +6157,26 @@ var VisualElement = /** @class */ (function () {
             }
         }
     };
-    // Subscribe to changes in a MotionValue
+    VisualElement.prototype.scheduleRender = function () {
+        sync.render(this.triggerRender, false, true);
+    };
+    VisualElement.prototype.scheduleUpdateLayoutDelta = function () {
+        sync.preRender(this.rootParent.updateLayoutDelta, false, true);
+    };
     VisualElement.prototype.subscribeToValue = function (key, value) {
         var _this = this;
         var onChange = function (latest) {
             _this.setSingleStaticValue(key, latest);
-            _this.latest[key] = latest;
-            _this.config.onUpdate && sync.update(_this.update, false, true);
+            // Schedule onUpdate if we have an onUpdate listener and the component has mounted
+            _this.element &&
+                _this.config.onUpdate &&
+                sync.update(_this.update, false, true);
+        };
+        var onRender = function () {
+            _this.element && _this.scheduleRender();
         };
         var unsubscribeOnChange = value.onChange(onChange);
-        var unsubscribeOnRender = value.onRenderRequest(this.scheduleRender);
+        var unsubscribeOnRender = value.onRenderRequest(onRender);
         this.valueSubscriptions.set(key, function () {
             unsubscribeOnChange();
             unsubscribeOnRender();
@@ -6430,24 +6184,15 @@ var VisualElement = /** @class */ (function () {
     };
     // Mount the VisualElement with the actual DOM element
     VisualElement.prototype.mount = function (element) {
-        var _this = this;
         invariant(!!element, "No ref found. Ensure components created with motion.custom forward refs using React.forwardRef");
         if (this.parent) {
             this.removeFromParent = this.parent.subscribe(this);
-            /**
-             * Save a reference to the nearest layout projecting ancestor.
-             */
-            // this.layoutParent = this.parent.isLayoutProjectionEnabled
-            //     ? this.parent
-            //     : this.parent.layoutParent
         }
         /**
          * Save the element to this.element as a semantic API, this.current to the VisualElement
          * is compatible with existing RefObject APIs.
          */
         this.element = this.current = element;
-        // Subscribe to any pre-existing MotionValues
-        this.forEachValue(function (value, key) { return _this.subscribeToValue(key, value); });
     };
     // Unmount the VisualElement and cancel any scheduled updates
     VisualElement.prototype.unmount = function () {
@@ -6609,6 +6354,7 @@ var defaultValueTypes = {
     y: px,
     z: px,
     perspective: px,
+    transformPerspective: px,
     opacity: alpha,
     originX: progressPercentage,
     originY: progressPercentage,
@@ -6637,7 +6383,7 @@ var findDimensionValueType = function (v) {
 /**
  * A list of all ValueTypes
  */
-var valueTypes = __spreadArrays(dimensionValueTypes, [color, complex]);
+var valueTypes = __spread(dimensionValueTypes, [color, complex]);
 /**
  * Tests a value against the list of ValueTypes
  */
@@ -6659,18 +6405,27 @@ var getValueAsType = function (value, type) {
  * A list of all transformable axes. We'll use this list to generated a version
  * of each axes for each transform.
  */
-var axes = ["", "X", "Y", "Z"];
+var transformAxes = ["", "X", "Y", "Z"];
 /**
  * An ordered array of each transformable value. By default, transform values
  * will be sorted to this order.
  */
-var order = ["translate", "scale", "rotate", "skew", "transformPerspective"];
+var order = ["perspective", "translate", "scale", "rotate", "skew"];
+/**
+ * Used to store the keys of all transforms that will distorted a measured bounding box.
+ */
+var boxDistortingKeys = new Set();
 /**
  * Generate a list of every possible transform key.
  */
-var transformProps = ["x", "y", "z"];
+var transformProps = ["transformPerspective", "x", "y", "z"];
 order.forEach(function (operationKey) {
-    axes.forEach(function (axesKey) { return transformProps.push(operationKey + axesKey); });
+    var isDistorting = new Set(["rotate", "skew"]).has(operationKey);
+    transformAxes.forEach(function (axesKey) {
+        var key = operationKey + axesKey;
+        transformProps.push(key);
+        isDistorting && boxDistortingKeys.add(key);
+    });
 });
 /**
  * A function to use with Array.sort to sort transform keys by their default order.
@@ -6697,6 +6452,7 @@ var translateAlias = {
     x: "translateX",
     y: "translateY",
     z: "translateZ",
+    transformPerspective: "perspective",
 };
 /**
  * Build a CSS transform style from individual x/y/scale etc properties.
@@ -6707,13 +6463,13 @@ var translateAlias = {
 function buildTransform(transform, transformKeys, transformTemplate, transformIsDefault, enableHardwareAcceleration, allowTransformNone) {
     if (enableHardwareAcceleration === void 0) { enableHardwareAcceleration = true; }
     if (allowTransformNone === void 0) { allowTransformNone = true; }
-    // The transform string we're going to build into
+    // The transform string we're going to build into.
     var transformString = "";
+    // Transform keys into their default order - this will determine the output order.
+    transformKeys.sort(sortTransformProps);
     // Track whether the defined transform has a defined z so we don't add a
     // second to enable hardware acceleration
     var transformHasZ = false;
-    // Transform keys into their default order - this will determine the output order.
-    transformKeys.sort(sortTransformProps);
     // Loop over each transform and build them into transformString
     var numTransformKeys = transformKeys.length;
     for (var i = 0; i < numTransformKeys; i++) {
@@ -6738,12 +6494,149 @@ function buildTransform(transform, transformKeys, transformTemplate, transformIs
     }
     return transformString;
 }
+/**
+ * Build a transformOrigin style. Uses the same defaults as the browser for
+ * undefined origins.
+ */
+function buildTransformOrigin(_a) {
+    var _b = _a.originX, originX = _b === void 0 ? "50%" : _b, _c = _a.originY, originY = _c === void 0 ? "50%" : _c, _d = _a.originZ, originZ = _d === void 0 ? 0 : _d;
+    return originX + " " + originY + " " + originZ;
+}
+/**
+ * Build a transform style that takes a calculated delta between the element's current
+ * space on screen and projects it into the desired space.
+ */
+function buildLayoutProjectionTransform(_a, treeScale) {
+    var x = _a.x, y = _a.y;
+    /**
+     * The translations we use to calculate are always relative to the viewport coordinate space.
+     * But when we apply scales, we also scale the coordinate space of an element and its children.
+     * For instance if we have a treeScale (the culmination of all parent scales) of 0.5 and we need
+     * to move an element 100 pixels, we actually need to move it 200 in within that scaled space.
+     */
+    var xTranslate = x.translate / treeScale.x;
+    var yTranslate = y.translate / treeScale.y;
+    return "translate3d(" + xTranslate + "px, " + yTranslate + "px, 0) scale(" + x.scale + ", " + y.scale + ")";
+}
+var identityProjection = buildLayoutProjectionTransform(delta(), {
+    x: 1,
+    y: 1,
+});
+/**
+ * Take the calculated delta origin and apply it as a transform string.
+ */
+function buildLayoutProjectionTransformOrigin(_a) {
+    var x = _a.x, y = _a.y;
+    return x.origin * 100 + "% " + y.origin * 100 + "% 0";
+}
+/**
+ * Build a transform string only from the properties that distort bounding box measurements
+ * (rotate and skew)
+ */
+function buildBoxDistortingTransforms(transform, transformKeys) {
+    var transformString = "";
+    transformKeys.sort(sortTransformProps);
+    var numTransformKeys = transformKeys.length;
+    for (var i = 0; i < numTransformKeys; i++) {
+        var key = transformKeys[i];
+        if (boxDistortingKeys.has(key)) {
+            transformString += key + "(" + transform[key] + ") ";
+        }
+    }
+    return transformString;
+}
 
 /**
  * Returns true if the provided key is a CSS variable
  */
 function isCSSVariable(key) {
     return key.startsWith("--");
+}
+
+function isCSSVariable$1(value) {
+    return typeof value === "string" && value.startsWith("var(--");
+}
+/**
+ * Parse Framer's special CSS variable format into a CSS token and a fallback.
+ *
+ * ```
+ * `var(--foo, #fff)` => [`--foo`, '#fff']
+ * ```
+ *
+ * @param current
+ */
+var cssVariableRegex = /var\((--[a-zA-Z0-9-_]+),? ?([a-zA-Z0-9 ()%#.,-]+)?\)/;
+function parseCSSVariable(current) {
+    var match = cssVariableRegex.exec(current);
+    if (!match)
+        return [,];
+    var _a = __read(match, 3), token = _a[1], fallback = _a[2];
+    return [token, fallback];
+}
+var maxDepth = 4;
+function getVariableValue(current, element, depth) {
+    if (depth === void 0) { depth = 1; }
+    invariant(depth <= maxDepth, "Max CSS variable fallback depth detected in property \"" + current + "\". This may indicate a circular fallback dependency.");
+    var _a = __read(parseCSSVariable(current), 2), token = _a[0], fallback = _a[1];
+    // No CSS variable detected
+    if (!token)
+        return;
+    // Attempt to read this CSS variable off the element
+    var resolved = window.getComputedStyle(element).getPropertyValue(token);
+    if (resolved) {
+        return resolved;
+    }
+    else if (isCSSVariable$1(fallback)) {
+        // The fallback might itself be a CSS variable, in which case we attempt to resolve it too.
+        return getVariableValue(fallback, element, depth + 1);
+    }
+    else {
+        return fallback;
+    }
+}
+/**
+ * Resolve CSS variables from
+ *
+ * @internal
+ */
+function resolveCSSVariables(visualElement, _a, transitionEnd) {
+    var _b;
+    var target = __rest(_a, []);
+    var element = visualElement.getInstance();
+    if (!(element instanceof HTMLElement))
+        return { target: target, transitionEnd: transitionEnd };
+    // If `transitionEnd` isn't `undefined`, clone it. We could clone `target` and `transitionEnd`
+    // only if they change but I think this reads clearer and this isn't a performance-critical path.
+    if (transitionEnd) {
+        transitionEnd = __assign({}, transitionEnd);
+    }
+    // Go through existing `MotionValue`s and ensure any existing CSS variables are resolved
+    visualElement.forEachValue(function (value) {
+        var current = value.get();
+        if (!isCSSVariable$1(current))
+            return;
+        var resolved = getVariableValue(current, element);
+        if (resolved)
+            value.set(resolved);
+    });
+    // Cycle through every target property and resolve CSS variables. Currently
+    // we only read single-var properties like `var(--foo)`, not `calc(var(--foo) + 20px)`
+    for (var key in target) {
+        var current = target[key];
+        if (!isCSSVariable$1(current))
+            continue;
+        var resolved = getVariableValue(current, element);
+        if (!resolved)
+            continue;
+        // Clone target if it hasn't already been
+        target[key] = resolved;
+        // If the user hasn't already set this key on `transitionEnd`, set it to the unresolved
+        // CSS variable. This will ensure that after the animation the component will reflect
+        // changes in the value of the CSS variable.
+        if (transitionEnd)
+            (_b = transitionEnd[key]) !== null && _b !== void 0 ? _b : (transitionEnd[key] = current);
+    }
+    return { target: target, transitionEnd: transitionEnd };
 }
 
 function pixelsToPercent(pixels, axis) {
@@ -6758,11 +6651,17 @@ function pixelsToPercent(pixels, axis) {
  */
 function correctBorderRadius(latest, viewportBox) {
     /**
-     * If latest is a string, we either presume it's already a percentage, in which case it'll
-     * already be stretched appropriately, or it's another value type which we don't support.
+     * If latest is a string, if it's a percentage we can return immediately as it's
+     * going to be stretched appropriately. Otherwise, if it's a pixel, convert it to a number.
      */
-    if (typeof latest !== "number")
-        return latest;
+    if (typeof latest === "string") {
+        if (px.test(latest)) {
+            latest = parseFloat(latest);
+        }
+        else {
+            return latest;
+        }
+    }
     /**
      * If latest is a number, it's a pixel value. We use the current viewportBox to calculate that
      * pixel value as a percentage of each axis
@@ -6771,16 +6670,31 @@ function correctBorderRadius(latest, viewportBox) {
     var y = pixelsToPercent(latest, viewportBox.y);
     return x + "% " + y + "%";
 }
+var varToken = "_$css";
 function correctBoxShadow(latest, _viewportBox, delta, treeScale) {
-    // GC Warning - this creates a function and object every frame
+    var original = latest;
+    /**
+     * We need to first strip and store CSS variables from the string.
+     */
+    var containsCSSVariables = latest.includes("var(");
+    var cssVariables = [];
+    if (containsCSSVariables) {
+        latest = latest.replace(cssVariableRegex, function (match) {
+            cssVariables.push(match);
+            return varToken;
+        });
+    }
     var shadow = complex.parse(latest);
+    // TODO: Doesn't support multiple shadows
+    if (shadow.length > 5)
+        return original;
     var template = complex.createTransformer(latest);
+    var offset = typeof shadow[0] !== "number" ? 1 : 0;
     // Calculate the overall context scale
     var xScale = delta.x.scale * treeScale.x;
     var yScale = delta.y.scale * treeScale.y;
-    // Scale x/y
-    shadow[1] /= xScale;
-    shadow[2] /= yScale;
+    shadow[0 + offset] /= xScale;
+    shadow[1 + offset] /= yScale;
     /**
      * Ideally we'd correct x and y scales individually, but because blur and
      * spread apply to both we have to take a scale average and apply that instead.
@@ -6789,12 +6703,21 @@ function correctBoxShadow(latest, _viewportBox, delta, treeScale) {
      */
     var averageScale = mix(xScale, yScale, 0.5);
     // Blur
-    if (typeof shadow[3] === "number")
-        shadow[3] /= averageScale;
+    if (typeof shadow[2 + offset] === "number")
+        shadow[2 + offset] /= averageScale;
     // Spread
-    if (typeof shadow[4] === "number")
-        shadow[4] /= averageScale;
-    return template(shadow);
+    if (typeof shadow[3 + offset] === "number")
+        shadow[3 + offset] /= averageScale;
+    var output = template(shadow);
+    if (containsCSSVariables) {
+        var i_1 = 0;
+        output = output.replace(varToken, function () {
+            var cssVariable = cssVariables[i_1];
+            i_1++;
+            return cssVariable;
+        });
+    }
+    return output;
 }
 var borderCorrectionDefinition = {
     process: correctBorderRadius,
@@ -6842,8 +6765,8 @@ function buildHTMLStyles(latest, style, vars, transform, transformOrigin, transf
     // with a manual incrementation would be better.
     transformKeys.length = 0;
     // Track whether we encounter any transform or transformOrigin values.
-    var hasTransform = !!isLayoutProjectionEnabled;
-    var hasTransformOrigin = !!isLayoutProjectionEnabled;
+    var hasTransform = false;
+    var hasTransformOrigin = false;
     // Does the calculated transform essentially equal "none"?
     var transformIsNone = true;
     /**
@@ -6902,33 +6825,37 @@ function buildHTMLStyles(latest, style, vars, transform, transformOrigin, transf
             }
         }
     }
-    // Only process transform if values aren't defaults
-    if (hasTransform || transformTemplate) {
-        if (!isLayoutProjectionEnabled) {
+    /**
+     * Build transform and transformOrigin. If we're performing layout projection these need
+     * to be based off the deltaFinal data. Any user-set origins will have been pre-baked
+     * into the deltaFinal.
+     */
+    if (isLayoutProjectionEnabled) {
+        style.transform = buildLayoutProjectionTransform(deltaFinal, treeScale);
+        if (style.transform === identityProjection)
+            style.transform = "";
+        /**
+         * If we have transform styles, build only those that distort bounding boxes (rotate/skew)
+         * as translations and scales will already have been used to calculate deltaFinal.
+         */
+        if (hasTransform) {
+            style.transform +=
+                " " + buildBoxDistortingTransforms(transform, transformKeys);
+            style.transform = style.transform.trim();
+        }
+        if (transformTemplate) {
+            style.transform = transformTemplate(transform, style.transform);
+        }
+        style.transformOrigin = buildLayoutProjectionTransformOrigin(deltaFinal);
+    }
+    else {
+        if (hasTransform) {
             style.transform = buildTransform(transform, transformKeys, transformTemplate, transformIsNone, enableHardwareAcceleration, allowTransformNone);
         }
-        else {
-            style.transform = layoutReprojection(deltaFinal, treeScale);
+        if (hasTransformOrigin) {
+            style.transformOrigin = buildTransformOrigin(transformOrigin);
         }
     }
-    // Only process transform origin if values aren't default
-    if (hasTransformOrigin) {
-        var originX = isLayoutProjectionEnabled
-            ? deltaFinal.x.origin * 100 + "%"
-            : transformOrigin.originX || "50%";
-        var originY = isLayoutProjectionEnabled
-            ? deltaFinal.y.origin * 100 + "%"
-            : transformOrigin.originY || "50%";
-        var originZ = transformOrigin.originZ || "0";
-        style.transformOrigin = originX + " " + originY + " " + originZ;
-    }
-}
-function layoutReprojection(delta, treeScale) {
-    var x = delta.x.translate / treeScale.x;
-    var y = delta.y.translate / treeScale.y;
-    var scaleX = delta.x.scale;
-    var scaleY = delta.y.scale;
-    return "translate3d(" + x + "px, " + y + "px, 0) scale(" + scaleX + ", " + scaleY + ")";
 }
 
 /**
@@ -6989,11 +6916,12 @@ function applyBoxDelta(box, _a) {
  * and applyAxisDelta
  */
 function applyAxisTransforms(final, axis, transforms, _a) {
-    var key = _a[0], scaleKey = _a[1], originKey = _a[2];
+    var _b = __read(_a, 3), key = _b[0], scaleKey = _b[1], originKey = _b[2];
     // Copy the current axis to the final axis before mutation
     final.min = axis.min;
     final.max = axis.max;
-    var originPoint = mix(axis.min, axis.max, transforms[originKey] || 0.5);
+    var axisOrigin = transforms[originKey] !== undefined ? transforms[originKey] : 0.5;
+    var originPoint = mix(axis.min, axis.max, axisOrigin);
     // Apply the axis delta to the final axis
     applyAxisDelta(final, transforms[key], transforms[scaleKey], originPoint, transforms.scale);
 }
@@ -7036,7 +6964,7 @@ function removeAxisDelta(axis, translate, scale, origin, boxScale) {
  * and acts as a bridge between motion values and removeAxisDelta
  */
 function removeAxisTransforms(axis, transforms, _a) {
-    var key = _a[0], scaleKey = _a[1], originKey = _a[2];
+    var _b = __read(_a, 3), key = _b[0], scaleKey = _b[1], originKey = _b[2];
     removeAxisDelta(axis, transforms[key], transforms[scaleKey], transforms[originKey], transforms.scale);
 }
 /**
@@ -7050,20 +6978,17 @@ function removeBoxTransforms(box, transforms) {
 /**
  * Apply a tree of deltas to a box. We do this to calculate the effect of all the transforms
  * in a tree upon our box before then calculating how to project it into our desired viewport-relative box
+ *
+ * This is the final nested loop within HTMLVisualElement.updateLayoutDelta
  */
-function applyTreeDeltas(box, treeScale, treePath) {
-    treeScale.x = treeScale.y = 1;
+function applyTreeDeltas(box, treePath) {
     var treeLength = treePath.length;
     for (var i = 0; i < treeLength; i++) {
-        var parent_1 = treePath[i];
-        var delta = parent_1.delta;
-        applyBoxDelta(box, delta);
-        treeScale.x *= delta.x.scale;
-        treeScale.y *= delta.y.scale;
+        applyBoxDelta(box, treePath[i].delta);
     }
 }
 
-var clampProgress$2 = clamp$1$1(0, 1);
+var clampProgress = function (v) { return clamp$1(0, 1, v); };
 /**
  * Returns true if the provided value is within maxDistance of the provided target
  */
@@ -7094,7 +7019,7 @@ function calcOrigin(source, target) {
     else if (sourceLength > targetLength) {
         origin = progress(source.min, source.max - targetLength, target.min);
     }
-    return clampProgress$2(origin);
+    return clampProgress(origin);
 }
 /**
  * Update the AxisDelta with a transform that projects source into target.
@@ -7124,11 +7049,87 @@ function updateBoxDelta(delta, source, target, origin) {
     updateAxisDelta(delta.x, source.x, target.x, origin);
     updateAxisDelta(delta.y, source.y, target.y, origin);
 }
+/**
+ * Update the treeScale by incorporating the parent's latest scale into its treeScale.
+ */
+function updateTreeScale(treeScale, parentTreeScale, parentDelta) {
+    treeScale.x = parentTreeScale.x * parentDelta.x.scale;
+    treeScale.y = parentTreeScale.y * parentDelta.y.scale;
+}
 
 // Call a handler once for each axis
 function eachAxis(handler) {
     return [handler("x"), handler("y")];
 }
+
+/**
+ * Converts seconds to milliseconds
+ *
+ * @param seconds - Time in seconds.
+ * @return milliseconds - Converted time in milliseconds.
+ */
+var secondsToMilliseconds = function (seconds) { return seconds * 1000; };
+
+var easingLookup = {
+    linear: linear,
+    easeIn: easeIn,
+    easeInOut: easeInOut,
+    easeOut: easeOut,
+    circIn: circIn,
+    circInOut: circInOut,
+    circOut: circOut,
+    backIn: backIn,
+    backInOut: backInOut,
+    backOut: backOut,
+    anticipate: anticipate,
+    bounceIn: bounceIn,
+    bounceInOut: bounceInOut,
+    bounceOut: bounceOut,
+};
+var easingDefinitionToFunction = function (definition) {
+    if (Array.isArray(definition)) {
+        // If cubic bezier definition, create bezier curve
+        invariant(definition.length === 4, "Cubic bezier arrays must contain four numerical values.");
+        var _a = __read(definition, 4), x1 = _a[0], y1 = _a[1], x2 = _a[2], y2 = _a[3];
+        return cubicBezier(x1, y1, x2, y2);
+    }
+    else if (typeof definition === "string") {
+        // Else lookup from table
+        invariant(easingLookup[definition] !== undefined, "Invalid easing type '" + definition + "'");
+        return easingLookup[definition];
+    }
+    return definition;
+};
+var isEasingArray = function (ease) {
+    return Array.isArray(ease) && typeof ease[0] !== "number";
+};
+
+/**
+ * Check if a value is animatable. Examples:
+ *
+ * ✅: 100, "100px", "#fff"
+ * ❌: "block", "url(2.jpg)"
+ * @param value
+ *
+ * @internal
+ */
+var isAnimatable = function (key, value) {
+    // If the list of keys tat might be non-animatable grows, replace with Set
+    if (key === "zIndex")
+        return false;
+    // If it's a number or a keyframes array, we can animate it. We might at some point
+    // need to do a deep isAnimatable check of keyframes, or let Popmotion handle this,
+    // but for now lets leave it like this for performance reasons
+    if (typeof value === "number" || Array.isArray(value))
+        return true;
+    if (typeof value === "string" && // It's animatable if we have a string
+        complex.test(value) && // And it contains numbers and/or colors
+        !value.startsWith("url(") // Unless it starts with "url("
+    ) {
+        return true;
+    }
+    return false;
+};
 
 var isKeyframesTarget = function (v) {
     return Array.isArray(v);
@@ -7143,10 +7144,13 @@ var underDampedSpring = function () { return ({
 }); };
 var overDampedSpring = function (to) { return ({
     type: "spring",
-    stiffness: 700,
-    damping: to === 0 ? 100 : 35,
+    stiffness: 550,
+    damping: to === 0 ? 100 : 30,
+    restDelta: 0.01,
+    restSpeed: 10,
 }); };
 var linearTween = function () { return ({
+    type: "keyframes",
     ease: "linear",
     duration: 0.3,
 }); };
@@ -7184,215 +7188,153 @@ var getDefaultTransition = function (valueKey, to) {
 };
 
 /**
- * A Popmotion action that accepts a single `to` prop. When it starts, it immediately
- * updates with `to` and then completes. By using this we can compose instant transitions
- * in with the same logic that applies `delay` or returns a `Promise` etc.
- *
- * Accepting `duration` is a little bit of a hack that simply defers the completetion of
- * the animation until after the duration finishes. This is for situations when you're **only**
- * animating non-animatable values and then setting something on `transitionEnd`. Really
- * you want this to fire after the "animation" finishes, rather than instantly.
- *
- * ```
- * animate={{
- *   display: 'block',
- *   transitionEnd: { display: 'none' }
- * }}
- * ```
+ * Decide whether a transition is defined on a given Transition.
+ * This filters out orchestration options and returns true
+ * if any options are left.
  */
-var just = function (_a) {
-    var to = _a.to, duration = _a.duration;
-    return action(function (_a) {
-        var update = _a.update, complete = _a.complete;
-        update(to);
-        duration ? delay(duration).start({ complete: complete }) : complete();
-    });
-};
-
-var easingDefinitionToFunction = function (definition) {
-    if (Array.isArray(definition)) {
-        // If cubic bezier definition, create bezier curve
-        invariant(definition.length === 4, "Cubic bezier arrays must contain four numerical values.");
-        var x1 = definition[0], y1 = definition[1], x2 = definition[2], y2 = definition[3];
-        return cubicBezier(x1, y1, x2, y2);
-    }
-    else if (typeof definition === "string") {
-        // Else lookup from table
-        invariant(easingLookup[definition] !== undefined, "Invalid easing type '" + definition + "'");
-        return easingLookup[definition];
-    }
-    return definition;
-};
-var isEasingArray = function (ease) {
-    return Array.isArray(ease) && typeof ease[0] !== "number";
-};
-
-var isDurationAnimation = function (v) {
-    return v.hasOwnProperty("duration") || v.hasOwnProperty("repeatDelay");
-};
-
+function isTransitionDefined(_a) {
+    var when = _a.when, delay = _a.delay, delayChildren = _a.delayChildren, staggerChildren = _a.staggerChildren, staggerDirection = _a.staggerDirection, repeat = _a.repeat, repeatType = _a.repeatType, repeatDelay = _a.repeatDelay, from = _a.from, transition = __rest(_a, ["when", "delay", "delayChildren", "staggerChildren", "staggerDirection", "repeat", "repeatType", "repeatDelay", "from"]);
+    return !!Object.keys(transition).length;
+}
 /**
- * Check if a value is animatable. Examples:
- *
- * ✅: 100, "100px", "#fff"
- * ❌: "block", "url(2.jpg)"
- * @param value
- *
- * @internal
+ * Convert Framer Motion's Transition type into Popmotion-compatible options.
  */
-var isAnimatable = function (key, value) {
-    // If the list of keys tat might be non-animatable grows, replace with Set
-    if (key === "zIndex")
-        return false;
-    // If it's a number or a keyframes array, we can animate it. We might at some point
-    // need to do a deep isAnimatable check of keyframes, or let Popmotion handle this,
-    // but for now lets leave it like this for performance reasons
-    if (typeof value === "number" || Array.isArray(value))
-        return true;
-    if (typeof value === "string" && // It's animatable if we have a string
-        complex.test(value) && // And it contains numbers and/or colors
-        !value.startsWith("url(") // Unless it starts with "url("
-    ) {
-        return true;
+function convertTransitionToAnimationOptions(_a) {
+    var yoyo = _a.yoyo, loop = _a.loop, flip = _a.flip, ease = _a.ease, times = _a.times, transition = __rest(_a, ["yoyo", "loop", "flip", "ease", "times"]);
+    var options = __assign({}, transition);
+    if (times) {
+        options.offset = times;
     }
-    return false;
-};
-
+    /**
+     * Convert any existing durations from seconds to milliseconds
+     */
+    if (transition.duration)
+        options["duration"] = secondsToMilliseconds(transition.duration);
+    if (transition.repeatDelay)
+        options.repeatDelay = secondsToMilliseconds(transition.repeatDelay);
+    /**
+     * Map easing names to Popmotion's easing functions
+     */
+    if (ease) {
+        options["ease"] = isEasingArray(ease)
+            ? ease.map(easingDefinitionToFunction)
+            : easingDefinitionToFunction(ease);
+    }
+    /**
+     * Support legacy transition API
+     */
+    if (transition.type === "tween")
+        options.type = "keyframes";
+    if (yoyo) {
+        options.repeatType = "reverse";
+    }
+    else if (loop) {
+        options.repeatType = "loop";
+    }
+    else if (flip) {
+        options.repeatType = "mirror";
+    }
+    options.repeat = loop || yoyo || flip || transition.repeat;
+    /**
+     * TODO: Popmotion 9 has the ability to automatically detect whether to use
+     * a keyframes or spring animation, but does so by detecting velocity and other spring options.
+     * It'd be good to introduce a similar thing here.
+     */
+    if (transition.type !== "spring")
+        options.type = "keyframes";
+    return options;
+}
 /**
- * Converts seconds to milliseconds
- *
- * @param seconds - Time in seconds.
- * @return milliseconds - Converted time in milliseconds.
+ * Get the delay for a value by checking Transition with decreasing specificity.
  */
-var secondsToMilliseconds = function (seconds) { return seconds * 1000; };
-
-var transitions = { tween: tween, spring: vectorSpring, keyframes: keyframes, inertia: index, just: just };
-var transitionOptionParser = {
-    tween: function (opts) {
-        if (opts.ease) {
-            var ease = isEasingArray(opts.ease) ? opts.ease[0] : opts.ease;
-            opts.ease = easingDefinitionToFunction(ease);
-        }
-        return opts;
-    },
-    keyframes: function (_a) {
-        var from = _a.from, to = _a.to, velocity = _a.velocity, opts = __rest(_a, ["from", "to", "velocity"]);
-        if (opts.values && opts.values[0] === null) {
-            var values = __spreadArrays(opts.values);
-            values[0] = from;
-            opts.values = values;
-        }
-        if (opts.ease) {
-            opts.easings = isEasingArray(opts.ease)
-                ? opts.ease.map(easingDefinitionToFunction)
-                : easingDefinitionToFunction(opts.ease);
-        }
-        opts.ease = linear;
-        return opts;
-    },
-};
-var isTransitionDefined = function (_a) {
-    var when = _a.when, delay = _a.delay, delayChildren = _a.delayChildren, staggerChildren = _a.staggerChildren, staggerDirection = _a.staggerDirection, transition = __rest(_a, ["when", "delay", "delayChildren", "staggerChildren", "staggerDirection"]);
-    return Object.keys(transition).length;
-};
-var getTransitionDefinition = function (key, to, transitionDefinition) {
-    var delay = transitionDefinition ? transitionDefinition.delay : 0;
-    // If no object, return default transition
-    // A better way to handle this would be to deconstruct out all the shared Orchestration props
-    // and see if there's any props remaining
-    if (transitionDefinition === undefined ||
-        !isTransitionDefined(transitionDefinition)) {
-        return __assign({ delay: delay }, getDefaultTransition(key, to));
+function getDelayFromTransition(transition, key) {
+    var _a, _b, _c, _d, _e;
+    return ((_e = (_d = (_b = (_a = transition[key]) === null || _a === void 0 ? void 0 : _a.delay) !== null && _b !== void 0 ? _b : (_c = transition["default"]) === null || _c === void 0 ? void 0 : _c.delay) !== null && _d !== void 0 ? _d : transition.delay) !== null && _e !== void 0 ? _e : 0);
+}
+function hydrateKeyframes(options) {
+    if (Array.isArray(options.to) && options.to[0] === null) {
+        options.to = __spread(options.to);
+        options.to[0] = options.from;
     }
-    var valueTransitionDefinition = transitionDefinition[key] ||
-        transitionDefinition.default ||
-        transitionDefinition;
-    if (valueTransitionDefinition.type === false) {
-        return {
-            delay: valueTransitionDefinition.hasOwnProperty("delay")
-                ? valueTransitionDefinition.delay
-                : delay,
-            to: isKeyframesTarget(to)
-                ? to[to.length - 1]
-                : to,
-            type: "just",
-        };
+    return options;
+}
+function getPopmotionAnimationOptions(transition, options, key) {
+    var _a;
+    if (Array.isArray(options.to)) {
+        (_a = transition.duration) !== null && _a !== void 0 ? _a : (transition.duration = 0.8);
     }
-    else if (isKeyframesTarget(to)) {
-        return __assign(__assign({ values: to, duration: 0.8, delay: delay, ease: "linear" }, valueTransitionDefinition), { 
-            // This animation must be keyframes if we're animating through an array
-            type: "keyframes" });
+    hydrateKeyframes(options);
+    /**
+     * Get a default transition if none is determined to be defined.
+     */
+    if (!isTransitionDefined(transition)) {
+        transition = __assign(__assign({}, transition), getDefaultTransition(key, options.to));
     }
-    else {
-        return __assign({ type: "tween", to: to,
-            delay: delay }, valueTransitionDefinition);
-    }
-};
-var preprocessOptions = function (type, opts) {
-    return transitionOptionParser[type]
-        ? transitionOptionParser[type](opts)
-        : opts;
-};
-var getAnimation = function (key, value, target, transition) {
+    return __assign(__assign({}, options), convertTransitionToAnimationOptions(transition));
+}
+/**
+ *
+ */
+function getAnimation(key, value, target, transition, onComplete) {
+    var valueTransition = transition[key] || transition["default"] || transition;
     var origin = value.get();
-    var isOriginAnimatable = isAnimatable(key, origin);
     var isTargetAnimatable = isAnimatable(key, target);
-    // TODO we could probably improve this check to ensure both values are of the same type -
-    // for instance 100 to #fff. This might live better in Popmotion.
-    warning(isOriginAnimatable === isTargetAnimatable, "You are trying to animate " + key + " from \"" + origin + "\" to \"" + target + "\". " + origin + " is not an animatable value - to enable this animation set " + origin + " to a value animatable to " + target + " via the `style` property.");
-    // Parse the `transition` prop and return options for the Popmotion animation
-    var _a = getTransitionDefinition(key, target, transition), _b = _a.type, type = _b === void 0 ? "tween" : _b, transitionDefinition = __rest(_a, ["type"]);
-    // If this is an animatable pair of values, return an animation, otherwise use `just`
-    var actionFactory = isOriginAnimatable && isTargetAnimatable
-        ? transitions[type]
-        : just;
-    var opts = preprocessOptions(type, __assign({ from: origin, velocity: value.getVelocity() }, transitionDefinition));
-    // Convert duration from Framer Motion's seconds into Popmotion's milliseconds
-    if (isDurationAnimation(opts)) {
-        if (opts.duration) {
-            opts.duration = secondsToMilliseconds(opts.duration);
-        }
-        if (opts.repeatDelay) {
-            opts.repeatDelay = secondsToMilliseconds(opts.repeatDelay);
-        }
+    /**
+     * If we're trying to animate from "none", try and get an animatable version
+     * of the target. This could be improved to work both ways.
+     */
+    if (origin === "none" && isTargetAnimatable && typeof target === "string") {
+        origin = complex.getAnimatableNone(target);
     }
-    return [actionFactory, opts];
-};
+    var isOriginAnimatable = isAnimatable(key, origin);
+    warning(isOriginAnimatable === isTargetAnimatable, "You are trying to animate " + key + " from \"" + origin + "\" to \"" + target + "\". " + origin + " is not an animatable value - to enable this animation set " + origin + " to a value animatable to " + target + " via the `style` property.");
+    function start() {
+        var options = {
+            from: origin,
+            to: target,
+            velocity: value.getVelocity(),
+            onComplete: onComplete,
+            onUpdate: function (v) { return value.set(v); },
+        };
+        return valueTransition.type === "inertia" ||
+            valueTransition.type === "decay"
+            ? inertia(__assign(__assign({}, options), valueTransition))
+            : animate(getPopmotionAnimationOptions(valueTransition, options, key));
+    }
+    function set() {
+        value.set(target);
+        onComplete();
+        return { stop: function () { } };
+    }
+    return !isOriginAnimatable ||
+        !isTargetAnimatable ||
+        valueTransition.type === false
+        ? set
+        : start;
+}
 /**
- * Start animation on a value. This function completely encapsulates Popmotion-specific logic.
+ * Start animation on a MotionValue. This function is an interface between
+ * Framer Motion and Popmotion
  *
  * @internal
  */
-function startAnimation(key, value, target, _a) {
-    if (_a === void 0) { _a = {}; }
-    var _b = _a.delay, delay$1 = _b === void 0 ? 0 : _b, transition = __rest(_a, ["delay"]);
-    return value.start(function (complete) {
-        var activeAnimation;
-        var _a = getAnimation(key, value, target, transition), animationFactory = _a[0], _b = _a[1], valueDelay = _b.delay, options = __rest(_b, ["delay"]);
-        if (valueDelay !== undefined) {
-            delay$1 = valueDelay;
-        }
-        var animate = function () {
-            var animation = animationFactory(options);
-            // Bind animation opts to animation
-            activeAnimation = animation.start({
-                update: function (v) { return value.set(v); },
-                complete: complete,
-            });
-        };
-        // If we're delaying this animation, only resolve it **after** the delay to
-        // ensure the value's resolve velocity is up-to-date.
-        if (delay$1) {
-            activeAnimation = delay(secondsToMilliseconds(delay$1)).start({
-                complete: animate,
-            });
+function startAnimation(key, value, target, transition) {
+    if (transition === void 0) { transition = {}; }
+    return value.start(function (onComplete) {
+        var delayTimer;
+        var controls;
+        var animation = getAnimation(key, value, target, transition, onComplete);
+        var delay = getDelayFromTransition(transition, key);
+        var start = function () { return (controls = animation()); };
+        if (delay) {
+            delayTimer = setTimeout(start, secondsToMilliseconds(delay));
         }
         else {
-            animate();
+            start();
         }
         return function () {
-            if (activeAnimation)
-                activeAnimation.stop();
+            clearTimeout(delayTimer);
+            controls === null || controls === void 0 ? void 0 : controls.stop();
         };
     });
 }
@@ -7464,15 +7406,12 @@ var HTMLVisualElement = /** @class */ (function (_super) {
          */
         _this.isLayoutProjectionEnabled = false;
         /**
-         * A boolean that flags whether this component has children that need to be update
-         * when this component changes layout.
-         */
-        _this.hasLayoutChildren = false;
-        /**
          * A set of layout update event handlers. These are only called once all layouts have been read,
          * making it safe to perform DOM write operations.
          */
-        _this.layoutUpdateListeners = new Set();
+        _this.layoutUpdateListeners = new SubscriptionManager();
+        _this.layoutMeasureListeners = new SubscriptionManager();
+        _this.viewportBoxUpdateListeners = new SubscriptionManager();
         /**
          * Keep track of whether the viewport box has been updated since the last render.
          * If it has, we want to fire the onViewportBoxUpdate listener.
@@ -7493,6 +7432,7 @@ var HTMLVisualElement = /** @class */ (function (_super) {
          * This is considered mutable to avoid object creation on each frame.
          */
         _this.treeScale = { x: 1, y: 1 };
+        _this.prevTreeScale = { x: 1, y: 1 };
         /**
          * The delta between the boxCorrected and the desired
          * targetBox (before user-set transforms are applied). The calculated output will be
@@ -7511,6 +7451,12 @@ var HTMLVisualElement = /** @class */ (function (_super) {
          */
         _this.deltaFinal = delta();
         /**
+         * The computed transform string to apply deltaFinal to the element. Currently this is only
+         * being used to diff and decide whether to render on the current frame, but a minor optimisation
+         * could be to provide this to the buildHTMLStyle function.
+         */
+        _this.deltaTransform = identityProjection;
+        /**
          *
          */
         _this.stopLayoutAxisAnimation = {
@@ -7524,6 +7470,16 @@ var HTMLVisualElement = /** @class */ (function (_super) {
         _this.axisProgress = {
             x: motionValue(0),
             y: motionValue(0),
+        };
+        _this.updateLayoutDelta = function () {
+            _this.isLayoutProjectionEnabled && _this.box && _this.updateLayoutDeltas();
+            /**
+             * Ensure all children layouts are also updated.
+             *
+             * This uses a pre-bound function executor rather than a lamda to avoid creating a new function
+             * multiple times per frame (source of mid-animation GC)
+             */
+            _this.children.forEach(fireUpdateLayoutDelta);
         };
         return _this;
     }
@@ -7555,6 +7511,13 @@ var HTMLVisualElement = /** @class */ (function (_super) {
     HTMLVisualElement.prototype.read = function (key) {
         return this.getComputedStyle()[key] || 0;
     };
+    HTMLVisualElement.prototype.addValue = function (key, value) {
+        _super.prototype.addValue.call(this, key, value);
+        // If we have rotate values we want to foce the layoutOrigin used in layout projection
+        // to the center of the element.
+        if (key.startsWith("rotate"))
+            this.layoutOrigin = 0.5;
+    };
     /**
      * Read a value directly from the HTMLElement in case it's not defined by a Motion
      * prop. If it's a transform, we just return a pre-defined default value as reading these
@@ -7571,7 +7534,6 @@ var HTMLVisualElement = /** @class */ (function (_super) {
     };
     HTMLVisualElement.prototype.enableLayoutProjection = function () {
         this.isLayoutProjectionEnabled = true;
-        forEachParent(this, function (parent) { return (parent.hasLayoutChildren = true); });
     };
     HTMLVisualElement.prototype.hide = function () {
         if (this.isVisible === false)
@@ -7590,19 +7552,20 @@ var HTMLVisualElement = /** @class */ (function (_super) {
      * for this via a `motion` prop.
      */
     HTMLVisualElement.prototype.onLayoutUpdate = function (callback) {
-        var _this = this;
-        this.layoutUpdateListeners.add(callback);
-        return function () { return _this.layoutUpdateListeners.delete(callback); };
+        return this.layoutUpdateListeners.add(callback);
+    };
+    HTMLVisualElement.prototype.onLayoutMeasure = function (callback) {
+        return this.layoutMeasureListeners.add(callback);
+    };
+    HTMLVisualElement.prototype.onViewportBoxUpdate = function (callback) {
+        return this.viewportBoxUpdateListeners.add(callback);
     };
     /**
      * To be called when all layouts are successfully updated. In turn we can notify layoutUpdate
      * subscribers.
      */
     HTMLVisualElement.prototype.layoutReady = function (config) {
-        var _this = this;
-        this.layoutUpdateListeners.forEach(function (listener) {
-            listener(_this.box, _this.prevViewportBox || _this.box, config);
-        });
+        this.layoutUpdateListeners.notify(this.box, this.prevViewportBox || this.box, config);
     };
     /**
      * Measure and return the Element's bounding box. We convert it to a AxisBox2D
@@ -7624,7 +7587,7 @@ var HTMLVisualElement = /** @class */ (function (_super) {
         return window.getComputedStyle(this.element);
     };
     /**
-     *
+     * Record the bounding box as it exists before a re-render.
      */
     HTMLVisualElement.prototype.snapshotBoundingBox = function () {
         this.prevViewportBox = this.getBoundingBoxWithoutTransforms();
@@ -7632,22 +7595,32 @@ var HTMLVisualElement = /** @class */ (function (_super) {
          * Update targetBox to match the prevViewportBox. This is just to ensure
          * that targetBox is affected by scroll in the same way as the measured box
          */
+        this.rebaseTargetBox(false, this.prevViewportBox);
+    };
+    HTMLVisualElement.prototype.rebaseTargetBox = function (force, box) {
+        var _this = this;
+        if (force === void 0) { force = false; }
+        if (box === void 0) { box = this.box; }
         var _a = this.axisProgress, x = _a.x, y = _a.y;
-        if (!this.isTargetBoxLocked && !x.isAnimating() && !y.isAnimating()) {
-            this.targetBox = copyAxisBox(this.prevViewportBox);
+        var shouldRebase = this.box &&
+            !this.isTargetBoxLocked &&
+            !x.isAnimating() &&
+            !y.isAnimating();
+        if (force || shouldRebase) {
+            eachAxis(function (axis) {
+                var _a = box[axis], min = _a.min, max = _a.max;
+                _this.setAxisTarget(axis, min, max);
+            });
         }
     };
     HTMLVisualElement.prototype.measureLayout = function () {
+        var _this = this;
         this.box = this.getBoundingBox();
         this.boxCorrected = copyAxisBox(this.box);
         if (!this.targetBox)
             this.targetBox = copyAxisBox(this.box);
-    };
-    /**
-     * Ensure the targetBox reflects the latest visual box on screen
-     */
-    HTMLVisualElement.prototype.refreshTargetBox = function () {
-        this.targetBox = this.getBoundingBoxWithoutTransforms();
+        this.layoutMeasureListeners.notify(this.box, this.prevViewportBox || this.box);
+        sync.update(function () { return _this.rebaseTargetBox(); });
     };
     HTMLVisualElement.prototype.lockTargetBox = function () {
         this.isTargetBoxLocked = true;
@@ -7664,7 +7637,10 @@ var HTMLVisualElement = /** @class */ (function (_super) {
      * works
      */
     HTMLVisualElement.prototype.resetTransform = function () {
-        this.element.style.transform = "none";
+        var transformTemplate = this.config.transformTemplate;
+        this.element.style.transform = transformTemplate
+            ? transformTemplate({}, "")
+            : "none";
         // Ensure that whatever happens next, we restore our transform
         this.scheduleRender();
     };
@@ -7677,17 +7653,7 @@ var HTMLVisualElement = /** @class */ (function (_super) {
         targetAxis.max = max;
         // Flag that we want to fire the onViewportBoxUpdate event handler
         this.hasViewportBoxUpdated = true;
-        /**
-         * If this component re-renders we need to ensure that any children performing
-         * layout projection also update
-         *
-         * TODO: This recursively traverses all children for each axis and for each component. A performance
-         * improvement would be to:
-         *  1. Flag the root component as dirty and schedule it to update pre-render
-         *  2. Recursively traverse tree from root layout component during this update
-         *      scheduling renders and updating deltas
-         */
-        scheduleChildrenLayoutRender(this);
+        this.rootParent.scheduleUpdateLayoutDelta();
     };
     /**
      *
@@ -7711,40 +7677,26 @@ var HTMLVisualElement = /** @class */ (function (_super) {
      * Update the layout deltas to reflect the relative positions of the layout
      * and the desired target box
      */
-    HTMLVisualElement.prototype.updateLayoutDeltas = function (isReactRender) {
-        var _a, _b;
-        /**
-         * Ensure that all the parent deltas are up-to-date before calculating this delta.
-         *
-         * TODO: This approach is exceptionally wasteful as every child will update
-         * the deltas of its parent even if it's already updated for this frame.
-         * We can optimise this by replacing this to a call directly to the root VisualElement
-         * which then runs iteration from the top-down, but only once per framestamp.
-         */
-        this.treePath.forEach(function (p) {
-            return p.updateLayoutDeltas(isReactRender);
-        });
-        /**
-         * Early return if layout reprojection isn't enabled
-         */
-        if (!this.isLayoutProjectionEnabled || !this.box)
-            return;
+    HTMLVisualElement.prototype.updateLayoutDeltas = function () {
         /**
          * Reset the corrected box with the latest values from box, as we're then going
          * to perform mutative operations on it.
          */
         resetBox(this.boxCorrected, this.box);
         /**
+         * If this component has a parent, update this treeScale by incorporating the parent's
+         * delta into its treeScale.
+         */
+        if (this.parent) {
+            this.prevTreeScale.x = this.treeScale.x;
+            this.prevTreeScale.y = this.treeScale.y;
+            updateTreeScale(this.treeScale, this.parent.treeScale, this.parent.delta);
+        }
+        /**
          * Apply all the parent deltas to this box to produce the corrected box. This
          * is the layout box, as it will appear on screen as a result of the transforms of its parents.
          */
-        applyTreeDeltas(this.boxCorrected, this.treeScale, this.treePath);
-        /**
-         * Apply the latest user-set transforms to the targetBox to produce the targetBoxFinal.
-         * This is the final box that we will then project into by calculating a transform delta and
-         * applying it to the corrected box.
-         */
-        applyBoxTransforms(this.targetBoxFinal, this.targetBox, this.latest);
+        applyTreeDeltas(this.boxCorrected, this.treePath);
         /**
          * Update the delta between the corrected box and the target box before user-set transforms were applied.
          * This will allow us to calculate the corrected borderRadius and boxShadow to compensate
@@ -7754,22 +7706,41 @@ var HTMLVisualElement = /** @class */ (function (_super) {
          * to allow people to choose whether these styles are corrected based on just the
          * layout reprojection or the final bounding box.
          */
-        updateBoxDelta(this.delta, this.boxCorrected, this.targetBox);
+        updateBoxDelta(this.delta, this.boxCorrected, this.targetBox, this.layoutOrigin);
+        /**
+         * If we have a listener for the viewport box, fire it.
+         */
+        this.hasViewportBoxUpdated &&
+            this.viewportBoxUpdateListeners.notify(this.targetBox, this.delta);
+        this.hasViewportBoxUpdated = false;
+        /**
+         * Ensure this element renders on the next frame if the projection transform has changed.
+         */
+        var deltaTransform = buildLayoutProjectionTransform(this.delta, this.treeScale);
+        if (deltaTransform !== this.deltaTransform ||
+            // Also compare calculated treeScale, for values that rely on only this for scale correction.
+            this.prevTreeScale.x !== this.treeScale.x ||
+            this.prevTreeScale.y !== this.treeScale.y) {
+            this.scheduleRender();
+        }
+        this.deltaTransform = deltaTransform;
+    };
+    HTMLVisualElement.prototype.updateTransformDeltas = function () {
+        if (!this.isLayoutProjectionEnabled || !this.box)
+            return;
+        /**
+         * Apply the latest user-set transforms to the targetBox to produce the targetBoxFinal.
+         * This is the final box that we will then project into by calculating a transform delta and
+         * applying it to the corrected box.
+         */
+        applyBoxTransforms(this.targetBoxFinal, this.targetBox, this.latest);
         /**
          * Update the delta between the corrected box and the final target box, after
          * user-set transforms are applied to it. This will be used by the renderer to
          * create a transform style that will reproject the element from its actual layout
          * into the desired bounding box.
          */
-        updateBoxDelta(this.deltaFinal, this.boxCorrected, this.targetBoxFinal);
-        /**
-         * If we have a listener for the viewport box, fire it.
-         * TODO: Instead of manually checking this, use framesync postRender
-         */
-        if (!isReactRender) {
-            this.hasViewportBoxUpdated && ((_b = (_a = this.config).onViewportBoxUpdate) === null || _b === void 0 ? void 0 : _b.call(_a, this.targetBox, this.delta));
-            this.hasViewportBoxUpdated = false;
-        }
+        updateBoxDelta(this.deltaFinal, this.boxCorrected, this.targetBoxFinal, this.layoutOrigin);
     };
     /**
      * ========================================
@@ -7779,13 +7750,11 @@ var HTMLVisualElement = /** @class */ (function (_super) {
     /**
      * Build a style prop using the latest resolved MotionValues
      */
-    HTMLVisualElement.prototype.build = function (isReactRender) {
+    HTMLVisualElement.prototype.build = function () {
+        this.updateTransformDeltas();
         if (this.isVisible !== undefined) {
             this.style.visibility = this.isVisible ? "visible" : "hidden";
         }
-        this.isLayoutProjectionEnabled &&
-            this.box &&
-            this.updateLayoutDeltas(isReactRender);
         buildHTMLStyles(this.latest, this.style, this.vars, this.transform, this.transformOrigin, this.transformKeys, this.config, this.isLayoutProjectionEnabled && !!this.box, this.delta, this.deltaFinal, this.treeScale, this.targetBoxFinal);
     };
     /**
@@ -7793,7 +7762,7 @@ var HTMLVisualElement = /** @class */ (function (_super) {
      */
     HTMLVisualElement.prototype.render = function () {
         // Rebuild the latest animated values into style and vars caches.
-        this.build(false);
+        this.build();
         // Directly assign style into the Element's style prop. In tests Object.assign is the
         // fastest way to assign styles.
         Object.assign(this.element.style, this.style);
@@ -7804,21 +7773,13 @@ var HTMLVisualElement = /** @class */ (function (_super) {
     };
     return HTMLVisualElement;
 }(VisualElement));
-function scheduleChildrenLayoutRender(element) {
-    if (element.isLayoutProjectionEnabled) {
-        element.scheduleRender();
-    }
-    if (element.hasLayoutChildren) {
-        element.children.forEach(scheduleChildrenLayoutRender);
-    }
-}
-function forEachParent(child, callback) {
-    var parent = child.parent;
-    while (parent) {
-        callback(parent);
-        parent = parent.parent;
-    }
-}
+/**
+ * Pre-bound version of updateLayoutDelta so we're not creating a new function multiple
+ * times per frame.
+ */
+var fireUpdateLayoutDelta = function (child) {
+    return child.updateLayoutDelta();
+};
 
 /**
  * Creates a constant value over the lifecycle of a component.
@@ -7888,14 +7849,14 @@ var unmeasured = { x: 0, y: 0, width: 0, height: 0 };
 /**
  * Build SVG visual attrbutes, like cx and style.transform
  */
-function buildSVGAttrs(_a, style, vars, attrs, transform, transformOrigin, transformKeys, config, dimensions, totalPathLength) {
+function buildSVGAttrs(_a, style, vars, attrs, transform, transformOrigin, transformKeys, config, dimensions, totalPathLength, isLayoutProjectionEnabled, delta, deltaFinal, treeScale, targetBox) {
     var attrX = _a.attrX, attrY = _a.attrY, originX = _a.originX, originY = _a.originY, pathLength = _a.pathLength, _b = _a.pathSpacing, pathSpacing = _b === void 0 ? 1 : _b, _c = _a.pathOffset, pathOffset = _c === void 0 ? 0 : _c, 
     // This is object creation, which we try to avoid per-frame.
     latest = __rest(_a, ["attrX", "attrY", "originX", "originY", "pathLength", "pathSpacing", "pathOffset"]);
     /**
      * With SVG we treat all animated values as attributes rather than CSS, so we build into attrs
      */
-    buildHTMLStyles(latest, attrs, vars, transform, transformOrigin, transformKeys, config);
+    buildHTMLStyles(latest, attrs, vars, transform, transformOrigin, transformKeys, config, isLayoutProjectionEnabled, delta, deltaFinal, treeScale, targetBox);
     /**
      * However, we apply transforms as CSS transforms. So if we detect a transform we take it from attrs
      * and copy it into style.
@@ -7941,6 +7902,7 @@ var camelCaseAttributes = new Set([
     "specularExponent",
     "stdDeviation",
     "tableValues",
+    "viewBox",
 ]);
 
 var CAMEL_CASE_PATTERN = /([a-z])([A-Z])/g;
@@ -8021,14 +7983,15 @@ var SVGVisualElement = /** @class */ (function (_super) {
         return this.element.getAttribute(key);
     };
     SVGVisualElement.prototype.build = function () {
-        buildSVGAttrs(this.latest, this.style, this.vars, this.attrs, this.transform, this.transformOrigin, this.transformKeys, this.config, this.dimensions, this.totalPathLength);
+        this.updateTransformDeltas();
+        buildSVGAttrs(this.latest, this.style, this.vars, this.attrs, this.transform, this.transformOrigin, this.transformKeys, this.config, this.dimensions, this.totalPathLength, this.isLayoutProjectionEnabled && !!this.box, this.delta, this.deltaFinal, this.treeScale, this.targetBoxFinal);
     };
     SVGVisualElement.prototype.render = function () {
         // Update HTML styles and CSS variables
         _super.prototype.render.call(this);
         // Loop through attributes and apply them to the SVGElement
         for (var key in this.attrs) {
-            this.element.setAttribute(camelToDash(key), this.attrs[key]);
+            this.element.setAttribute(!camelCaseAttributes.has(key) ? camelToDash(key) : key, this.attrs[key]);
         }
     };
     return SVGVisualElement;
@@ -8128,7 +8091,7 @@ var PresenceContext = React.createContext(null);
  *   const [isPresent, safeToRemove] = usePresence()
  *
  *   useEffect(() => {
- *     !isPresent setTimeout(safeToRemove, 1000)
+ *     !isPresent && setTimeout(safeToRemove, 1000)
  *   }, [isPresent])
  *
  *   return <div />
@@ -8154,6 +8117,23 @@ function usePresence() {
     return !isPresent && onExitComplete ? [false, safeToRemove] : [true];
 }
 /**
+ * Similar to `usePresence`, except `useIsPresent` simply returns whether or not the component is present.
+ * There is no `safeToRemove` function.
+ *
+ * ```jsx
+ * import { useIsPresent } from "framer-motion"
+ *
+ * export const Component = () => {
+ *   const isPresent = useIsPresent()
+ *
+ *   useEffect(() => {
+ *     !isPresent && console.log("I've been removed!")
+ *   }, [isPresent])
+ *
+ *   return <div />
+ * }
+ * ```
+ *
  * @public
  */
 function useIsPresent() {
@@ -8167,6 +8147,7 @@ var useUniqueId = function () { return useConstant(incrementId); };
 /**
  * DOM-flavoured variation of the useVisualElement hook. Used to create either a HTMLVisualElement
  * or SVGVisualElement for the component.
+ *
  */
 var useDomVisualElement = function (Component, props, parent, isStatic, ref) {
     var visualElement = useConstant(function () {
@@ -8175,11 +8156,16 @@ var useDomVisualElement = function (Component, props, parent, isStatic, ref) {
             : HTMLVisualElement;
         return new DOMVisualElement(parent, ref);
     });
-    visualElement.updateConfig(__assign({ enableHardwareAcceleration: !isStatic }, props));
+    visualElement.updateConfig(__assign(__assign(__assign({}, visualElement.config), { enableHardwareAcceleration: !isStatic }), props));
     visualElement.layoutId = props.layoutId;
     var isPresent = useIsPresent();
     visualElement.isPresent =
         props.isPresent !== undefined ? props.isPresent : isPresent;
+    React.useEffect(function () {
+        if (props.onViewportBoxUpdate) {
+            return visualElement.onViewportBoxUpdate(props.onViewportBoxUpdate);
+        }
+    }, [props.onViewportBoxUpdate]);
     return visualElement;
 };
 
@@ -8219,6 +8205,8 @@ var validMotionProps = new Set([
     "dragListener",
     "dragConstraints",
     "dragDirectionLock",
+    "_dragX",
+    "_dragY",
     "dragElastic",
     "dragMomentum",
     "dragPropagation",
@@ -8318,98 +8306,12 @@ function render(Component, props, visualElement) {
      * that might have been taken out of the provided props.
      */
     visualElement.clean();
-    visualElement.build(true);
+    visualElement.build();
     // Generate props to visually render this component
     var visualProps = isSVGComponent(Component)
         ? buildSVGProps(visualElement)
         : buildHTMLProps(visualElement, props);
     return React.createElement(Component, __assign(__assign(__assign({}, forwardedProps), { ref: visualElement.ref }), visualProps));
-}
-
-function isCSSVariable$1(value) {
-    return typeof value === "string" && value.startsWith("var(--");
-}
-/**
- * Parse Framer's special CSS variable format into a CSS token and a fallback.
- *
- * ```
- * `var(--foo, #fff)` => [`--foo`, '#fff']
- * ```
- *
- * @param current
- */
-var cssVariableRegex = /var\((--[a-zA-Z0-9-_]+),? ?([a-zA-Z0-9 ()%#.,-]+)?\)/;
-function parseCSSVariable(current) {
-    var match = cssVariableRegex.exec(current);
-    if (!match)
-        return [,];
-    var token = match[1], fallback = match[2];
-    return [token, fallback];
-}
-var maxDepth = 4;
-function getVariableValue(current, element, depth) {
-    if (depth === void 0) { depth = 1; }
-    invariant(depth <= maxDepth, "Max CSS variable fallback depth detected in property \"" + current + "\". This may indicate a circular fallback dependency.");
-    var _a = parseCSSVariable(current), token = _a[0], fallback = _a[1];
-    // No CSS variable detected
-    if (!token)
-        return;
-    // Attempt to read this CSS variable off the element
-    var resolved = window.getComputedStyle(element).getPropertyValue(token);
-    if (resolved) {
-        return resolved;
-    }
-    else if (isCSSVariable$1(fallback)) {
-        // The fallback might itself be a CSS variable, in which case we attempt to resolve it too.
-        return getVariableValue(fallback, element, depth + 1);
-    }
-    else {
-        return fallback;
-    }
-}
-/**
- * Resolve CSS variables from
- *
- * @internal
- */
-function resolveCSSVariables(visualElement, _a, transitionEnd) {
-    var target = __rest(_a, []);
-    var element = visualElement.getInstance();
-    if (!(element instanceof HTMLElement))
-        return { target: target, transitionEnd: transitionEnd };
-    // If `transitionEnd` isn't `undefined`, clone it. We could clone `target` and `transitionEnd`
-    // only if they change but I think this reads clearer and this isn't a performance-critical path.
-    if (transitionEnd) {
-        transitionEnd = __assign({}, transitionEnd);
-    }
-    // Go through existing `MotionValue`s and ensure any existing CSS variables are resolved
-    visualElement.forEachValue(function (value) {
-        var current = value.get();
-        if (!isCSSVariable$1(current))
-            return;
-        var resolved = getVariableValue(current, element);
-        if (resolved)
-            value.set(resolved);
-    });
-    // Cycle through every target property and resolve CSS variables. Currently
-    // we only read single-var properties like `var(--foo)`, not `calc(var(--foo) + 20px)`
-    for (var key in target) {
-        var current = target[key];
-        if (!isCSSVariable$1(current))
-            continue;
-        var resolved = getVariableValue(current, element);
-        if (!resolved)
-            continue;
-        // Clone target if it hasn't already been
-        target[key] = resolved;
-        // If the user hasn't already set this key on `transitionEnd`, set it to the unresolved
-        // CSS variable. This will ensure that after the animation the component will reflect
-        // changes in the value of the CSS variable.
-        if (transitionEnd && transitionEnd[key] === undefined) {
-            transitionEnd[key] = current;
-        }
-    }
-    return { target: target, transitionEnd: transitionEnd };
 }
 
 var positionalKeys = new Set([
@@ -8589,6 +8491,17 @@ var checkAndConvertChangedValueTypes = function (visualElement, target, origin, 
                     target[key] = to.map(parseFloat);
                 }
             }
+            else if ((fromType === null || fromType === void 0 ? void 0 : fromType.transform) && (toType === null || toType === void 0 ? void 0 : toType.transform) &&
+                (from === 0 || to === 0)) {
+                // If one or the other value is 0, it's safe to coerce it to the
+                // type of the other without measurement
+                if (from === 0) {
+                    value.set(toType.transform(from));
+                }
+                else {
+                    target[key] = fromType.transform(to);
+                }
+            }
             else {
                 // If we're going to do value conversion via DOM measurements, we first
                 // need to remove non-positional transform values that could affect the bbox measurements.
@@ -8610,7 +8523,7 @@ var checkAndConvertChangedValueTypes = function (visualElement, target, origin, 
         // If we removed transform values, reapply them before the next render
         if (removedTransformValues.length) {
             removedTransformValues.forEach(function (_a) {
-                var key = _a[0], value = _a[1];
+                var _b = __read(_a, 2), key = _b[0], value = _b[1];
                 visualElement.getValue(key).set(value);
             });
         }
@@ -8821,7 +8734,7 @@ var AnimationControls = /** @class */ (function () {
         this.hasMounted = true;
         this.pendingAnimations.forEach(function (_a) {
             var animation = _a.animation, resolve = _a.resolve;
-            return _this.start.apply(_this, animation).then(resolve);
+            return _this.start.apply(_this, __spread(animation)).then(resolve);
         });
     };
     /**
@@ -8949,6 +8862,12 @@ var isMotionValue = function (value) {
     return value instanceof MotionValue;
 };
 
+function isForcedMotionValue(key, _a) {
+    var layout = _a.layout, layoutId = _a.layoutId;
+    return (isTransformProp(key) ||
+        isTransformOriginProp(key) ||
+        ((layout || layoutId !== undefined) && !!valueScaleCorrection[key]));
+}
 /**
  * Scrape props for MotionValues and add/remove them to this component's
  * VisualElement
@@ -8959,13 +8878,13 @@ function useMotionValues(visualElement, props) {
      * Remove MotionValues that are no longer present
      */
     for (var key in prev) {
-        var isTransform = isTransformProp(key) || isTransformOriginProp(key);
-        var existsAsProp = props[key];
-        var existsAsStyle = props.style && props.style[key];
+        var isForced = isForcedMotionValue(key, props);
+        var existsAsProp = props[key] !== undefined;
+        var existsAsStyle = props.style && props.style[key] !== undefined;
         var propIsMotionValue = existsAsProp && isMotionValue(props[key]);
         var styleIsMotionValue = existsAsStyle && isMotionValue(props.style[key]);
-        var transformRemoved = isTransform && !existsAsProp && !existsAsStyle;
-        var motionValueRemoved = !isTransform && !propIsMotionValue && !styleIsMotionValue;
+        var transformRemoved = isForced && !existsAsProp && !existsAsStyle;
+        var motionValueRemoved = !isForced && !propIsMotionValue && !styleIsMotionValue;
         if (transformRemoved || motionValueRemoved) {
             visualElement.removeValue(key);
             delete prev[key];
@@ -8974,9 +8893,9 @@ function useMotionValues(visualElement, props) {
     /**
      * Add incoming MotionValues
      */
-    addMotionValues(visualElement, prev, props);
+    addMotionValues(visualElement, prev, props, false, props);
     if (props.style)
-        addMotionValues(visualElement, prev, props.style, true);
+        addMotionValues(visualElement, prev, props.style, true, props);
     /**
      * Transform custom values if provided a handler, ie size -> width/height
      * Ideally we'd ditch this by removing support for size and other custom values from Framer.
@@ -8990,7 +8909,7 @@ function useMotionValues(visualElement, props) {
  *
  * TODO: Type the VisualElements properly
  */
-function addMotionValues(visualElement, prev, source, isStyle) {
+function addMotionValues(visualElement, prev, source, isStyle, props) {
     if (isStyle === void 0) { isStyle = false; }
     if (isStyle)
         visualElement.reactStyle = {};
@@ -9004,7 +8923,7 @@ function addMotionValues(visualElement, prev, source, isStyle) {
                 foundMotionValue = true;
             }
         }
-        else if (isTransformProp(key) || isTransformOriginProp(key)) {
+        else if (isForcedMotionValue(key, props)) {
             // If this is a transform prop, always create a MotionValue
             // to ensure we can reconcile them all together.
             if (!visualElement.hasValue(key)) {
@@ -9227,7 +9146,8 @@ var VisualElementAnimationControls = /** @class */ (function () {
      * Resolve a variant from its label or resolver into an actual `Target` we can animate to.
      * @param variant -
      */
-    VisualElementAnimationControls.prototype.resolveVariant = function (variant) {
+    VisualElementAnimationControls.prototype.resolveVariant = function (variant, _a) {
+        var custom = (_a === void 0 ? {} : _a).custom;
         if (!variant) {
             return {
                 target: undefined,
@@ -9237,9 +9157,9 @@ var VisualElementAnimationControls = /** @class */ (function () {
         }
         if (isTargetResolver(variant)) {
             // resolve current and velocity
-            variant = variant(this.props.custom, getCurrent(this.visualElement), getVelocity(this.visualElement));
+            variant = variant(custom !== null && custom !== void 0 ? custom : this.props.custom, getCurrent(this.visualElement), getVelocity(this.visualElement));
         }
-        var _a = variant.transition, transition = _a === void 0 ? this.defaultTransition : _a, transitionEnd = variant.transitionEnd, target = __rest(variant, ["transition", "transitionEnd"]);
+        var _b = variant.transition, transition = _b === void 0 ? this.defaultTransition : _b, transitionEnd = variant.transitionEnd, target = __rest(variant, ["transition", "transitionEnd"]);
         return { transition: transition, transitionEnd: transitionEnd, target: target };
     };
     /**
@@ -9248,7 +9168,7 @@ var VisualElementAnimationControls = /** @class */ (function () {
     VisualElementAnimationControls.prototype.getHighestPriority = function () {
         if (!this.activeOverrides.size)
             return 0;
-        return Math.max.apply(Math, Array.from(this.activeOverrides));
+        return Math.max.apply(Math, __spread(Array.from(this.activeOverrides)));
     };
     /**
      * Set an override. We add this layer of indirection so if, for instance, a tap gesture
@@ -9330,15 +9250,11 @@ var VisualElementAnimationControls = /** @class */ (function () {
     VisualElementAnimationControls.prototype.applyVariantLabels = function (variantLabelList) {
         var _this = this;
         var isActive = new Set();
-        var reversedList = __spreadArrays(variantLabelList).reverse();
+        var reversedList = __spread(variantLabelList).reverse();
         reversedList.forEach(function (key) {
             var _a = _this.resolveVariant(_this.variants[key]), target = _a.target, transitionEnd = _a.transitionEnd;
-            if (transitionEnd) {
-                _this.setValues(transitionEnd, { isActive: isActive });
-            }
-            if (target) {
-                _this.setValues(target, { isActive: isActive });
-            }
+            target && _this.setValues(target, { isActive: isActive });
+            transitionEnd && _this.setValues(transitionEnd, { isActive: isActive });
             if (_this.children && _this.children.size) {
                 _this.children.forEach(function (child) {
                     return child.applyVariantLabels(variantLabelList);
@@ -9368,8 +9284,9 @@ var VisualElementAnimationControls = /** @class */ (function () {
     };
     VisualElementAnimationControls.prototype.animate = function (animationDefinition, _a) {
         var _this = this;
-        var _b = _a === void 0 ? {} : _a, _c = _b.delay, delay = _c === void 0 ? 0 : _c, _d = _b.priority, priority = _d === void 0 ? 0 : _d, transitionOverride = _b.transitionOverride;
-        var _e = this.resolveVariant(animationDefinition), target = _e.target, transition = _e.transition, transitionEnd = _e.transitionEnd;
+        if (_a === void 0) { _a = {}; }
+        var _b = _a.delay, delay = _b === void 0 ? 0 : _b, _c = _a.priority, priority = _c === void 0 ? 0 : _c, transitionOverride = _a.transitionOverride, opts = __rest(_a, ["delay", "priority", "transitionOverride"]);
+        var _d = this.resolveVariant(animationDefinition, opts), target = _d.target, transition = _d.transition, transitionEnd = _d.transitionEnd;
         if (transitionOverride) {
             transition = transitionOverride;
         }
@@ -9413,47 +9330,54 @@ var VisualElementAnimationControls = /** @class */ (function () {
     };
     VisualElementAnimationControls.prototype.animateVariantLabels = function (variantLabels, opts) {
         var _this = this;
-        var animations = __spreadArrays(variantLabels).reverse()
+        var animations = __spread(variantLabels).reverse()
             .map(function (label) { return _this.animateVariant(label, opts); });
         return Promise.all(animations);
     };
     VisualElementAnimationControls.prototype.animateVariant = function (variantLabel, opts) {
         var _this = this;
-        var when = false;
-        var delayChildren = 0;
-        var staggerChildren = 0;
-        var staggerDirection = 1;
         var priority = (opts && opts.priority) || 0;
         var variant = this.variants[variantLabel];
-        var getAnimations = variant
+        var transition = variant
+            ? this.resolveVariant(variant, opts).transition || {}
+            : {};
+        /**
+         * If we have a variant, create a callback that runs it as an animation.
+         * Otherwise, we resolve a Promise immediately for a composable no-op.
+         */
+        var getAnimation = variant
             ? function () { return _this.animate(variant, opts); }
             : function () { return Promise.resolve(); };
+        /**
+         * If we have children, create a callback that runs all their animations.
+         * Otherwise, we resolve a Promise immediately for a composable no-op.
+         */
         var getChildrenAnimations = this.children
-            ? function () {
-                return _this.animateChildren(variantLabel, delayChildren, staggerChildren, staggerDirection, priority);
+            ? function (forwardDelay) {
+                if (forwardDelay === void 0) { forwardDelay = 0; }
+                var _a = transition.delayChildren, delayChildren = _a === void 0 ? 0 : _a;
+                return _this.animateChildren(variantLabel, delayChildren + forwardDelay, transition.staggerChildren, transition.staggerDirection, priority, opts === null || opts === void 0 ? void 0 : opts.custom);
             }
             : function () { return Promise.resolve(); };
-        if (variant && this.children) {
-            var transition = this.resolveVariant(variant).transition;
-            if (transition) {
-                when = transition.when || when;
-                delayChildren = transition.delayChildren || delayChildren;
-                staggerChildren = transition.staggerChildren || staggerChildren;
-                staggerDirection =
-                    transition.staggerDirection || staggerDirection;
-            }
-        }
+        /**
+         * If the transition explicitly defines a "when" option, we need to resolve either
+         * this animation or all children animations before playing the other.
+         */
+        var when = transition.when;
         if (when) {
-            var _a = when === "beforeChildren"
-                ? [getAnimations, getChildrenAnimations]
-                : [getChildrenAnimations, getAnimations], first = _a[0], last = _a[1];
+            var _a = __read(when === "beforeChildren"
+                ? [getAnimation, getChildrenAnimations]
+                : [getChildrenAnimations, getAnimation], 2), first = _a[0], last = _a[1];
             return first().then(last);
         }
         else {
-            return Promise.all([getAnimations(), getChildrenAnimations()]);
+            return Promise.all([
+                getAnimation(),
+                getChildrenAnimations(opts === null || opts === void 0 ? void 0 : opts.delay),
+            ]);
         }
     };
-    VisualElementAnimationControls.prototype.animateChildren = function (variantLabel, delayChildren, staggerChildren, staggerDirection, priority) {
+    VisualElementAnimationControls.prototype.animateChildren = function (variantLabel, delayChildren, staggerChildren, staggerDirection, priority, custom) {
         if (delayChildren === void 0) { delayChildren = 0; }
         if (staggerChildren === void 0) { staggerChildren = 0; }
         if (staggerDirection === void 0) { staggerDirection = 1; }
@@ -9470,6 +9394,7 @@ var VisualElementAnimationControls = /** @class */ (function () {
             var animation = childControls.animateVariant(variantLabel, {
                 priority: priority,
                 delay: delayChildren + generateStaggerDuration(i),
+                custom: custom,
             });
             animations.push(animation);
         });
@@ -9592,12 +9517,177 @@ function useVisualElementAnimation(visualElement, props, config) {
 }
 
 /**
- * @internal
+ * @public
  */
-var MotionPluginContext = React.createContext({
+var MotionConfigContext = React.createContext({
     transformPagePoint: function (p) { return p; },
     features: [],
 });
+
+/**
+ * Load features via renderless components based on the provided MotionProps
+ */
+function useFeatures(defaultFeatures, isStatic, visualElement, controls, props, context, parentContext, shouldInheritVariant) {
+    var plugins = React.useContext(MotionConfigContext);
+    // If this is a static component, or we're rendering on the server, we don't load
+    // any feature components
+    if (isStatic || typeof window === "undefined")
+        return null;
+    var allFeatures = __spread(defaultFeatures, plugins.features);
+    var numFeatures = allFeatures.length;
+    var features = [];
+    // Decide which features we should render and add them to the returned array
+    for (var i = 0; i < numFeatures; i++) {
+        var _a = allFeatures[i], shouldRender = _a.shouldRender, key = _a.key, getComponent = _a.getComponent;
+        if (shouldRender(props, parentContext)) {
+            var Component = getComponent(props);
+            Component &&
+                features.push(React.createElement(Component, __assign({ key: key }, props, { localContext: context, parentContext: parentContext, visualElement: visualElement, controls: controls, inherit: shouldInheritVariant })));
+        }
+    }
+    return features;
+}
+
+var Presence;
+(function (Presence) {
+    Presence[Presence["Entering"] = 0] = "Entering";
+    Presence[Presence["Present"] = 1] = "Present";
+    Presence[Presence["Exiting"] = 2] = "Exiting";
+})(Presence || (Presence = {}));
+var VisibilityAction;
+(function (VisibilityAction) {
+    VisibilityAction[VisibilityAction["Hide"] = 0] = "Hide";
+    VisibilityAction[VisibilityAction["Show"] = 1] = "Show";
+})(VisibilityAction || (VisibilityAction = {}));
+
+/**
+ * Default handlers for batching VisualElements
+ */
+var defaultHandler = {
+    measureLayout: function (child) { return child.measureLayout(); },
+    layoutReady: function (child) { return child.layoutReady(); },
+};
+/**
+ * Sort VisualElements by tree depth, so we process the highest elements first.
+ */
+var sortByDepth = function (a, b) {
+    return a.depth - b.depth;
+};
+/**
+ * Create a batcher to process VisualElements
+ */
+function createBatcher() {
+    var queue = new Set();
+    var add = function (child) { return queue.add(child); };
+    var flush = function (_a) {
+        var _b = _a === void 0 ? defaultHandler : _a, measureLayout = _b.measureLayout, layoutReady = _b.layoutReady;
+        var order = Array.from(queue).sort(sortByDepth);
+        /**
+         * Write: Reset any transforms on children elements so we can read their actual layout
+         */
+        order.forEach(function (child) { return child.resetTransform(); });
+        /**
+         * Read: Measure the actual layout
+         */
+        order.forEach(measureLayout);
+        /**
+         * Write: Notify the VisualElements they're ready for further write operations.
+         */
+        order.forEach(layoutReady);
+        /**
+         * After all children have started animating, ensure any Entering components are set to Present.
+         * If we add deferred animations (set up all animations and then start them in two loops) this
+         * could be moved to the start loop. But it needs to happen after all the animations configs
+         * are generated in AnimateSharedLayout as this relies on presence data
+         */
+        order.forEach(function (child) {
+            if (child.isPresent)
+                child.presence = Presence.Present;
+        });
+        queue.clear();
+    };
+    return { add: add, flush: flush };
+}
+function isSharedLayout(context) {
+    return !!context.forceUpdate;
+}
+var SharedLayoutContext = React.createContext(createBatcher());
+
+var isBrowser = typeof window !== "undefined";
+var useIsomorphicLayoutEffect = isBrowser ? React.useLayoutEffect : React.useEffect;
+
+function useSnapshotOnUnmount(visualElement) {
+    var syncLayout = React.useContext(SharedLayoutContext);
+    useIsomorphicLayoutEffect(function () { return function () {
+        if (isSharedLayout(syncLayout)) {
+            syncLayout.remove(visualElement);
+        }
+    }; }, []);
+}
+
+/**
+ * Create a `motion` component.
+ *
+ * This function accepts a Component argument, which can be either a string (ie "div"
+ * for `motion.div`), or an actual React component.
+ *
+ * Alongside this is a config option which provides a way of rendering the provided
+ * component "offline", or outside the React render cycle.
+ *
+ * @internal
+ */
+function createMotionComponent(Component, _a) {
+    var defaultFeatures = _a.defaultFeatures, useVisualElement = _a.useVisualElement, render = _a.render, animationControlsConfig = _a.animationControlsConfig;
+    function MotionComponent(props, externalRef) {
+        var parentContext = React.useContext(MotionContext);
+        var shouldInheritVariant = checkShouldInheritVariant(props);
+        /**
+         * If a component isStatic, we only visually update it as a
+         * result of a React re-render, rather than any interactions or animations.
+         * If this component or any ancestor isStatic, we disable hardware acceleration
+         * and don't load any additional functionality.
+         */
+        var isStatic = parentContext.static || props.static || false;
+        /**
+         * Create a VisualElement for this component. A VisualElement provides a common
+         * interface to renderer-specific APIs (ie DOM/Three.js etc) as well as
+         * providing a way of rendering to these APIs outside of the React render loop
+         * for more performant animations and interactions
+         */
+        var visualElement = useVisualElement(Component, props, parentContext.visualElement, isStatic, externalRef);
+        /**
+         * Scrape MotionValues from props and add/remove them to/from
+         * the VisualElement as necessary.
+         */
+        useMotionValues(visualElement, props);
+        /**
+         * Create animation controls for the VisualElement. It might be
+         * interesting to try and combine this with VisualElement itself in a further refactor.
+         */
+        var controls = useVisualElementAnimation(visualElement, props, animationControlsConfig);
+        /**
+         * Build the MotionContext to pass on to the next `motion` component.
+         */
+        var context = useMotionContext(parentContext, controls, visualElement, isStatic, props);
+        /**
+         * Load features as renderless components unless the component isStatic
+         */
+        var features = useFeatures(defaultFeatures, isStatic, visualElement, controls, props, context, parentContext, shouldInheritVariant);
+        var component = render(Component, props, visualElement);
+        /**
+         * If this component is a child of AnimateSharedLayout, we need to snapshot the component
+         * before it's unmounted. This lives here rather than in features/layout/Measure because
+         * as a child component its unmount effect runs after this component has been unmounted.
+         */
+        useSnapshotOnUnmount(visualElement);
+        // The mount order and hierarchy is specific to ensure our element ref is hydrated by the time
+        // all plugins and features has to execute.
+        return (React.createElement(React.Fragment, null,
+            React.createElement(MotionContext.Provider, { value: context }, component),
+            features));
+    }
+    return React.forwardRef(MotionComponent);
+}
 
 function createLock(name) {
     var lock = null;
@@ -9641,18 +9731,6 @@ function getGlobalLock(drag) {
     }
     return lock;
 }
-
-var isViewportScrollBlocked = false;
-var isBrowser = typeof window !== "undefined";
-if (isBrowser) {
-    document.addEventListener("touchmove", function (event) {
-        if (isViewportScrollBlocked) {
-            event.preventDefault();
-        }
-    }, { passive: false });
-}
-var blockViewportScroll = function () { return (isViewportScrollBlocked = true); };
-var unblockViewportScroll = function () { return (isViewportScrollBlocked = false); };
 
 function addDomEvent(target, eventName, handler, options) {
     if (!handler)
@@ -9928,7 +10006,6 @@ var PanSession = /** @class */ (function () {
     PanSession.prototype.end = function () {
         this.removeListeners && this.removeListeners();
         cancelSync.update(this.updatePoint);
-        unblockViewportScroll();
     };
     return PanSession;
 }());
@@ -10016,19 +10093,17 @@ function calcConstrainedMinPoint(point, length, progress, constraints, elastic) 
     return constraints ? applyConstraints(min, constraints, elastic) : min;
 }
 /**
- * Calculate constraints in terms of the viewport when
- * defined relatively to the measured axis.
+ * Calculate constraints in terms of the viewport when defined relatively to the
+ * measured axis. This is measured from the nearest edge, so a max constraint of 200
+ * on an axis with a max value of 300 would return a constraint of 500 - axis length
  */
 function calcRelativeAxisConstraints(axis, min, max) {
-    var constraints = {};
-    var length = axis.max - axis.min;
-    if (min !== undefined) {
-        constraints.min = axis.min + min;
-    }
-    if (max !== undefined) {
-        constraints.max = Math.max(axis.min + max - length, axis.min + max);
-    }
-    return constraints;
+    return {
+        min: min !== undefined ? axis.min + min : undefined,
+        max: max !== undefined
+            ? axis.max + max - (axis.max - axis.min)
+            : undefined,
+    };
 }
 /**
  * Calculate constraints in terms of the viewport when
@@ -10052,7 +10127,7 @@ function calcViewportAxisConstraints(layoutAxis, constraintsAxis) {
     // flip the constraints
     if (constraintsAxis.max - constraintsAxis.min <
         layoutAxis.max - layoutAxis.min) {
-        _a = [max, min], min = _a[0], max = _a[1];
+        _a = __read([max, min], 2), min = _a[0], max = _a[1];
     }
     return {
         min: layoutAxis.min + min,
@@ -10075,6 +10150,19 @@ function calcPositionFromProgress(axis, constraints, progress) {
     var axisLength = axis.max - axis.min;
     var min = mix(constraints.min, constraints.max - axisLength, progress);
     return { min: min, max: min + axisLength };
+}
+/**
+ * Rebase the calculated viewport constraints relative to the layout.min point.
+ */
+function rebaseAxisConstraints(layout, constraints) {
+    var relativeConstraints = {};
+    if (constraints.min !== undefined) {
+        relativeConstraints.min = constraints.min - layout.min;
+    }
+    if (constraints.max !== undefined) {
+        relativeConstraints.max = constraints.max - layout.min;
+    }
+    return relativeConstraints;
 }
 
 var elementDragControls = new WeakMap();
@@ -10110,6 +10198,10 @@ var VisualElementDragControls = /** @class */ (function () {
          */
         this.props = {};
         /**
+         * @internal
+         */
+        this.hasMutatedConstraints = false;
+        /**
          * Track the initial position of the cursor relative to the dragging element
          * when dragging starts as a value of 0-1 on each axis. We then use this to calculate
          * an ideal bounding box for the VisualElement renderer to project into every frame.
@@ -10120,6 +10212,9 @@ var VisualElementDragControls = /** @class */ (function () {
             x: 0.5,
             y: 0.5,
         };
+        // When updating _dragX, or _dragY instead of the VisualElement,
+        // persist their values between drag gestures.
+        this.originPoint = {};
         // This is a reference to the global drag gesture lock, ensuring only one component
         // can "capture" the drag of one or both axes.
         // TODO: Look into moving this into pansession?
@@ -10147,13 +10242,6 @@ var VisualElementDragControls = /** @class */ (function () {
          */
         snapToCursor && this.snapToCursor(originEvent);
         var onSessionStart = function () {
-            // Initiate viewport scroll blocking on touch start. This is a very aggressive approach
-            // which has come out of the difficulty in us being able to do this once a scroll gesture
-            // has initiated in mobile browsers. This means if there's a horizontally-scrolling carousel
-            // on a page we can't let a user scroll the page itself from it. Ideally what we'd do is
-            // trigger this once we've got a scroll direction determined. This approach sort-of worked
-            // but if the component was dragged too far in a single frame page scrolling would initiate.
-            blockViewportScroll();
             // Stop any animations on both axis values immediately. This allows the user to throw and catch
             // the component.
             _this.stopMotion();
@@ -10201,6 +10289,14 @@ var VisualElementDragControls = /** @class */ (function () {
                 _this.cursorProgress[axis] = cursorProgress
                     ? cursorProgress[axis]
                     : progress(min, max, point[axis]);
+                /**
+                 * If we have external drag MotionValues, record their origin point. On pointermove
+                 * we'll apply the pan gesture offset directly to this value.
+                 */
+                var axisValue = _this.getAxisMotionValue(axis);
+                if (axisValue) {
+                    _this.originPoint[axis] = axisValue.get();
+                }
             });
             // Set current drag status
             _this.isDragging = true;
@@ -10225,8 +10321,8 @@ var VisualElementDragControls = /** @class */ (function () {
                 return;
             }
             // Update each point with the latest position
-            _this.updateAxis("x", event);
-            _this.updateAxis("y", event);
+            _this.updateAxis("x", event, offset);
+            _this.updateAxis("y", event, offset);
             // Fire onDrag event
             (_d = (_c = _this.props).onDrag) === null || _d === void 0 ? void 0 : _d.call(_c, event, info);
             // Update the last pointer event
@@ -10250,9 +10346,10 @@ var VisualElementDragControls = /** @class */ (function () {
         this.visualElement.resetTransform();
         this.visualElement.measureLayout();
         element.style.transform = transform;
-        this.visualElement.refreshTargetBox();
+        this.visualElement.rebaseTargetBox(true, this.visualElement.getBoundingBoxWithoutTransforms());
     };
     VisualElementDragControls.prototype.resolveDragConstraints = function () {
+        var _this = this;
         var dragConstraints = this.props.dragConstraints;
         if (dragConstraints) {
             this.constraints = isRefObject(dragConstraints)
@@ -10261,6 +10358,17 @@ var VisualElementDragControls = /** @class */ (function () {
         }
         else {
             this.constraints = false;
+        }
+        /**
+         * If we're outputting to external MotionValues, we want to rebase the measured constraints
+         * from viewport-relative to component-relative.
+         */
+        if (this.constraints && !this.hasMutatedConstraints) {
+            eachAxis(function (axis) {
+                if (_this.getAxisMotionValue(axis)) {
+                    _this.constraints[axis] = rebaseAxisConstraints(_this.visualElement.box[axis], _this.constraints[axis]);
+                }
+            });
         }
     };
     VisualElementDragControls.prototype.resolveRefConstraints = function (layoutBox, constraints) {
@@ -10275,6 +10383,7 @@ var VisualElementDragControls = /** @class */ (function () {
          */
         if (onMeasureDragConstraints) {
             var userConstraints = onMeasureDragConstraints(convertAxisBoxToBoundingBox(measuredConstraints));
+            this.hasMutatedConstraints = !!userConstraints;
             if (userConstraints) {
                 measuredConstraints = convertBoundingBoxToAxisBox(userConstraints);
             }
@@ -10282,7 +10391,6 @@ var VisualElementDragControls = /** @class */ (function () {
         return measuredConstraints;
     };
     VisualElementDragControls.prototype.cancelDrag = function () {
-        unblockViewportScroll();
         this.isDragging = false;
         this.panSession && this.panSession.end();
         this.panSession = null;
@@ -10308,21 +10416,51 @@ var VisualElementDragControls = /** @class */ (function () {
         onDragEnd === null || onDragEnd === void 0 ? void 0 : onDragEnd(event, info);
     };
     VisualElementDragControls.prototype.snapToCursor = function (event) {
+        var _this = this;
         this.prepareBoundingBox();
-        this.cursorProgress.x = 0.5;
-        this.cursorProgress.y = 0.5;
-        this.updateAxis("x", event);
-        this.updateAxis("y", event);
+        eachAxis(function (axis) {
+            var axisValue = _this.getAxisMotionValue(axis);
+            if (axisValue) {
+                var point = getViewportPointFromEvent(event).point;
+                var box = _this.visualElement.box;
+                var length_1 = box[axis].max - box[axis].min;
+                var center = box[axis].min + length_1 / 2;
+                var offset = point[axis] - center;
+                _this.originPoint[axis] = point[axis];
+                axisValue.set(offset);
+            }
+            else {
+                _this.cursorProgress[axis] = 0.5;
+                _this.updateVisualElementAxis(axis, event);
+            }
+        });
     };
     /**
      * Update the specified axis with the latest pointer information.
      */
-    VisualElementDragControls.prototype.updateAxis = function (axis, event) {
-        var _a;
-        var _b = this.props, drag = _b.drag, dragElastic = _b.dragElastic;
+    VisualElementDragControls.prototype.updateAxis = function (axis, event, offset) {
+        var drag = this.props.drag;
         // If we're not dragging this axis, do an early return.
         if (!shouldDrag(axis, drag, this.currentDirection))
             return;
+        return this.getAxisMotionValue(axis)
+            ? this.updateAxisMotionValue(axis, offset)
+            : this.updateVisualElementAxis(axis, event);
+    };
+    VisualElementDragControls.prototype.updateAxisMotionValue = function (axis, offset) {
+        var axisValue = this.getAxisMotionValue(axis);
+        if (!offset || !axisValue)
+            return;
+        var dragElastic = this.props.dragElastic;
+        var nextValue = this.originPoint[axis] + offset[axis];
+        var update = this.constraints
+            ? applyConstraints(nextValue, this.constraints[axis], dragElastic)
+            : nextValue;
+        axisValue.set(update);
+    };
+    VisualElementDragControls.prototype.updateVisualElementAxis = function (axis, event) {
+        var _a;
+        var dragElastic = this.props.dragElastic;
         // Get the actual layout bounding box of the element
         var axisLayout = this.visualElement.box[axis];
         // Calculate its current length. In the future we might want to lerp this to animate
@@ -10345,6 +10483,24 @@ var VisualElementDragControls = /** @class */ (function () {
             dragElastic: dragElastic,
             dragMomentum: dragMomentum }, remainingProps);
     };
+    /**
+     * Drag works differently depending on which props are provided.
+     *
+     * - If _dragX and _dragY are provided, we output the gesture delta directly to those motion values.
+     * - If the component will perform layout animations, we output the gesture to the component's
+     *      visual bounding box
+     * - Otherwise, we apply the delta to the x/y motion values.
+     */
+    VisualElementDragControls.prototype.getAxisMotionValue = function (axis) {
+        var _a = this.props, layout = _a.layout, layoutId = _a.layoutId;
+        var dragKey = "_drag" + axis.toUpperCase();
+        if (this.props[dragKey]) {
+            return this.props[dragKey];
+        }
+        else if (!layout && layoutId === undefined) {
+            return this.visualElement.getValue(axis, 0);
+        }
+    };
     VisualElementDragControls.prototype.animateDragEnd = function (velocity) {
         var _this = this;
         var _a = this.props, drag = _a.drag, dragMomentum = _a.dragMomentum, dragElastic = _a.dragElastic, dragTransition = _a.dragTransition;
@@ -10366,7 +10522,9 @@ var VisualElementDragControls = /** @class */ (function () {
             // If we're not animating on an externally-provided `MotionValue` we can use the
             // component's animation controls which will handle interactions with whileHover (etc),
             // otherwise we just have to animate the `MotionValue` itself.
-            return _this.visualElement.startLayoutAxisAnimation(axis, inertia);
+            return _this.getAxisMotionValue(axis)
+                ? _this.startAxisValueAnimation(axis, inertia)
+                : _this.visualElement.startLayoutAxisAnimation(axis, inertia);
         });
         // Run all animations and then resolve the new drag constraints.
         return Promise.all(momentumAnimations).then(function () {
@@ -10375,7 +10533,22 @@ var VisualElementDragControls = /** @class */ (function () {
         });
     };
     VisualElementDragControls.prototype.stopMotion = function () {
-        this.visualElement.stopLayoutAnimation();
+        var _this = this;
+        eachAxis(function (axis) {
+            var axisValue = _this.getAxisMotionValue(axis);
+            axisValue
+                ? axisValue.stop()
+                : _this.visualElement.stopLayoutAnimation();
+        });
+    };
+    VisualElementDragControls.prototype.startAxisValueAnimation = function (axis, transition) {
+        var axisValue = this.getAxisMotionValue(axis);
+        if (!axisValue)
+            return;
+        var currentValue = axisValue.get();
+        axisValue.set(currentValue);
+        axisValue.set(currentValue); // Set twice to hard-reset velocity
+        return startAnimation(axis, axisValue, 0, transition);
     };
     VisualElementDragControls.prototype.scalePoint = function () {
         var _this = this;
@@ -10481,7 +10654,7 @@ function getCurrentDirection(offset, lockThreshold) {
  */
 function useDrag(props, visualElement) {
     var groupDragControls = props.dragControls;
-    var transformPagePoint = React.useContext(MotionPluginContext).transformPagePoint;
+    var transformPagePoint = React.useContext(MotionConfigContext).transformPagePoint;
     var dragControls = useConstant(function () {
         return new VisualElementDragControls({
             visualElement: visualElement,
@@ -10500,13 +10673,17 @@ var makeRenderlessComponent = function (hook) { return function (props) {
     return null;
 }; };
 
+var Component = makeRenderlessComponent(function (_a) {
+    var visualElement = _a.visualElement, props = __rest(_a, ["visualElement"]);
+    return useDrag(props, visualElement);
+});
+/**
+ * @public
+ */
 var Drag = {
     key: "drag",
     shouldRender: function (props) { return !!props.drag; },
-    Component: makeRenderlessComponent(function (_a) {
-        var visualElement = _a.visualElement, props = __rest(_a, ["visualElement"]);
-        return useDrag(props, visualElement);
-    }),
+    getComponent: function () { return Component; },
 };
 
 function useUnmountEffect(callback) {
@@ -10529,7 +10706,7 @@ function usePanGesture(_a, ref) {
     var onPan = _a.onPan, onPanStart = _a.onPanStart, onPanEnd = _a.onPanEnd, onPanSessionStart = _a.onPanSessionStart;
     var hasPanEvents = onPan || onPanStart || onPanEnd || onPanSessionStart;
     var panSession = React.useRef(null);
-    var transformPagePoint = React.useContext(MotionPluginContext).transformPagePoint;
+    var transformPagePoint = React.useContext(MotionConfigContext).transformPagePoint;
     var handlers = {
         onSessionStart: onPanSessionStart,
         onStart: onPanStart,
@@ -10694,47 +10871,54 @@ var gestureProps = [
     "onHoverStart",
     "onHoverEnd",
 ];
+var GestureComponent = makeRenderlessComponent(function (_a) {
+    var visualElement = _a.visualElement, props = __rest(_a, ["visualElement"]);
+    useGestures(props, visualElement);
+});
+/**
+ * @public
+ */
 var Gestures = {
     key: "gestures",
     shouldRender: function (props) {
         return gestureProps.some(function (key) { return props.hasOwnProperty(key); });
     },
-    Component: makeRenderlessComponent(function (_a) {
-        var visualElement = _a.visualElement, props = __rest(_a, ["visualElement"]);
-        useGestures(props, visualElement);
-    }),
+    getComponent: function () { return GestureComponent; },
 };
 
+var ExitComponent = makeRenderlessComponent(function (props) {
+    var animate = props.animate, controls = props.controls, exit = props.exit;
+    var _a = __read(usePresence(), 2), isPresent = _a[0], onExitComplete = _a[1];
+    var presenceContext = React.useContext(PresenceContext);
+    var isPlayingExitAnimation = React.useRef(false);
+    var custom = (presenceContext === null || presenceContext === void 0 ? void 0 : presenceContext.custom) !== undefined
+        ? presenceContext.custom
+        : props.custom;
+    React.useEffect(function () {
+        if (!isPresent) {
+            if (!isPlayingExitAnimation.current && exit) {
+                controls.start(exit, { custom: custom }).then(onExitComplete);
+            }
+            isPlayingExitAnimation.current = true;
+        }
+        else if (isPlayingExitAnimation.current &&
+            animate &&
+            typeof animate !== "boolean" &&
+            !(animate instanceof AnimationControls)) {
+            controls.start(animate);
+        }
+        if (isPresent) {
+            isPlayingExitAnimation.current = false;
+        }
+    }, [animate, controls, custom, exit, isPresent, onExitComplete, props]);
+});
+/**
+ * @public
+ */
 var Exit = {
     key: "exit",
     shouldRender: function (props) { return !!props.exit && !checkShouldInheritVariant(props); },
-    Component: makeRenderlessComponent(function (props) {
-        var animate = props.animate, controls = props.controls, exit = props.exit;
-        var _a = usePresence(), isPresent = _a[0], onExitComplete = _a[1];
-        var presenceContext = React.useContext(PresenceContext);
-        var isPlayingExitAnimation = React.useRef(false);
-        var custom = (presenceContext === null || presenceContext === void 0 ? void 0 : presenceContext.custom) !== undefined
-            ? presenceContext.custom
-            : props.custom;
-        React.useEffect(function () {
-            if (!isPresent) {
-                if (!isPlayingExitAnimation.current && exit) {
-                    controls.setProps(__assign(__assign({}, props), { custom: custom }));
-                    controls.start(exit).then(onExitComplete);
-                }
-                isPlayingExitAnimation.current = true;
-            }
-            else if (isPlayingExitAnimation.current &&
-                animate &&
-                typeof animate !== "boolean" &&
-                !(animate instanceof AnimationControls)) {
-                controls.start(animate);
-            }
-            if (isPresent) {
-                isPlayingExitAnimation.current = false;
-            }
-        }, [animate, controls, custom, exit, isPresent, onExitComplete, props]);
-    }),
+    getComponent: function () { return ExitComponent; },
 };
 
 var AnimatePropType;
@@ -10903,21 +11087,21 @@ function useAnimationGroupSubscription(animation, controls) {
     }; }, [unsubscribe]);
 }
 
-var _a$1, _b;
-var AnimatePropComponents = (_a$1 = {},
-    _a$1[AnimatePropType.Target] = makeRenderlessComponent(function (_a) {
+var _a, _b;
+var AnimatePropComponents = (_a = {},
+    _a[AnimatePropType.Target] = makeRenderlessComponent(function (_a) {
         var animate = _a.animate, controls = _a.controls, visualElement = _a.visualElement, transition = _a.transition;
         return useAnimateProp(animate, controls, visualElement, transition);
     }),
-    _a$1[AnimatePropType.VariantLabel] = makeRenderlessComponent(function (_a) {
+    _a[AnimatePropType.VariantLabel] = makeRenderlessComponent(function (_a) {
         var animate = _a.animate, _b = _a.inherit, inherit = _b === void 0 ? true : _b, controls = _a.controls, initial = _a.initial;
         return useVariants(initial, animate, inherit, controls);
     }),
-    _a$1[AnimatePropType.AnimationSubscription] = makeRenderlessComponent(function (_a) {
+    _a[AnimatePropType.AnimationSubscription] = makeRenderlessComponent(function (_a) {
         var animate = _a.animate, controls = _a.controls;
         return useAnimationGroupSubscription(animate, controls);
     }),
-    _a$1);
+    _a);
 var isVariantLabel$1 = function (prop) {
     return Array.isArray(prop) || typeof prop === "string";
 };
@@ -10947,23 +11131,19 @@ var getAnimationComponent = function (props) {
     }
     return animatePropType ? AnimatePropComponents[animatePropType] : undefined;
 };
+/**
+ * @public
+ */
+var Animation = {
+    key: "animation",
+    shouldRender: function () { return true; },
+    getComponent: getAnimationComponent,
+};
 
 function tweenAxis(target, prev, next, p) {
     target.min = mix(prev.min, next.min, p);
     target.max = mix(prev.max, next.max, p);
 }
-
-var Presence;
-(function (Presence) {
-    Presence[Presence["Entering"] = 0] = "Entering";
-    Presence[Presence["Present"] = 1] = "Present";
-    Presence[Presence["Exiting"] = 2] = "Exiting";
-})(Presence || (Presence = {}));
-var VisibilityAction;
-(function (VisibilityAction) {
-    VisibilityAction[VisibilityAction["Hide"] = 0] = "Hide";
-    VisibilityAction[VisibilityAction["Show"] = 1] = "Show";
-})(VisibilityAction || (VisibilityAction = {}));
 
 var progressTarget = 1000;
 var Animate = /** @class */ (function (_super) {
@@ -10980,8 +11160,13 @@ var Animate = /** @class */ (function (_super) {
         };
         _this.animate = function (target, origin, _a) {
             if (_a === void 0) { _a = {}; }
-            var originBox = _a.originBox, targetBox = _a.targetBox, visibilityAction = _a.visibilityAction, config = __rest(_a, ["originBox", "targetBox", "visibilityAction"]);
+            var originBox = _a.originBox, targetBox = _a.targetBox, visibilityAction = _a.visibilityAction, shouldStackAnimate = _a.shouldStackAnimate, config = __rest(_a, ["originBox", "targetBox", "visibilityAction", "shouldStackAnimate"]);
             var _b = _this.props, visualElement = _b.visualElement, layout = _b.layout;
+            /**
+             * Early return if we've been instructed not to animate this render.
+             */
+            if (shouldStackAnimate === false)
+                return _this.safeToRemove();
             /**
              * Allow the measured origin (prev bounding box) and target (actual layout) to be
              * overridden by the provided config.
@@ -11027,12 +11212,11 @@ var Animate = /** @class */ (function (_super) {
              */
             return Promise.all(animations).then(function () {
                 var _a, _b;
-                (_a = config.onLayoutAnimationComplete) === null || _a === void 0 ? void 0 : _a.call(config);
+                (_b = (_a = _this.props).onLayoutAnimationComplete) === null || _b === void 0 ? void 0 : _b.call(_a);
                 if (visualElement.isPresent) {
                     visualElement.presence = Presence.Present;
                 }
                 else {
-                    (_b = config.onLayoutAnimationComplete) === null || _b === void 0 ? void 0 : _b.call(config);
                     _this.safeToRemove();
                 }
             });
@@ -11040,9 +11224,11 @@ var Animate = /** @class */ (function (_super) {
         return _this;
     }
     Animate.prototype.componentDidMount = function () {
+        var _this = this;
         var visualElement = this.props.visualElement;
         visualElement.enableLayoutProjection();
         this.unsubLayoutReady = visualElement.onLayoutUpdate(this.animate);
+        visualElement.updateConfig(__assign(__assign({}, visualElement.config), { safeToRemove: function () { return _this.safeToRemove(); } }));
     };
     Animate.prototype.componentWillUnmount = function () {
         var _this = this;
@@ -11072,7 +11258,11 @@ var Animate = /** @class */ (function (_super) {
          * If this is a crossfade animation, create a function that updates both the opacity of this component
          * and the one being crossfaded out.
          */
-        var crossfade = crossfadeOpacity && this.createCrossfadeAnimation(crossfadeOpacity);
+        var crossfade;
+        if (crossfadeOpacity) {
+            crossfade = this.createCrossfadeAnimation(crossfadeOpacity);
+            visualElement.show();
+        }
         /**
          * Create an animation function to run once per frame. This will tween the visual bounding box from
          * origin to target using the latest progress value.
@@ -11088,10 +11278,12 @@ var Animate = /** @class */ (function (_super) {
         };
         // Synchronously run a frame to ensure there's no flash of the uncorrected bounding box.
         frame();
-        // Start the animation on this axis
-        var animation = startAnimation(axis === "x" ? "layoutX" : "layoutY", layoutProgress, progressTarget, transition || this.props.transition || defaultTransition);
+        // Ensure that the layout delta is updated for this frame.
+        visualElement.updateLayoutDelta();
         // Create a function to stop animation on this specific axis
         var unsubscribeProgress = layoutProgress.onChange(frame);
+        // Start the animation on this axis
+        var animation = startAnimation(axis === "x" ? "layoutX" : "layoutY", layoutProgress, progressTarget, transition || this.props.transition || defaultTransition).then(unsubscribeProgress);
         this.stopAxisAnimation[axis] = function () {
             layoutProgress.stop();
             unsubscribeProgress();
@@ -11115,14 +11307,10 @@ var Animate = /** @class */ (function (_super) {
     };
     return Animate;
 }(React.Component));
-var AnimateLayout = {
-    key: "animate-layout",
-    shouldRender: function (props) { return !!props.layout || !!props.layoutId; },
-    Component: function (props) {
-        var _a = usePresence(), safeToRemove = _a[1];
-        return React.createElement(Animate, __assign({}, props, { safeToRemove: safeToRemove }));
-    },
-};
+function AnimateLayoutContextProvider(props) {
+    var _a = __read(usePresence(), 2), safeToRemove = _a[1];
+    return React.createElement(Animate, __assign({}, props, { safeToRemove: safeToRemove }));
+}
 function hasMoved(a, b) {
     return hasAxisMoved(a.x, b.x) || hasAxisMoved(a.y, b.y);
 }
@@ -11145,76 +11333,22 @@ function compress(min, max, easing) {
 }
 var easeCrossfadeIn = compress(0, 0.5, circOut);
 var easeCrossfadeOut = compress(0.5, 0.95, linear);
-
 /**
- * Default handlers for batching VisualElements
+ * @public
  */
-var defaultHandler = {
-    measureLayout: function (child) { return child.measureLayout(); },
-    layoutReady: function (child) { return child.layoutReady(); },
+var AnimateLayout = {
+    key: "animate-layout",
+    shouldRender: function (props) { return !!props.layout || !!props.layoutId; },
+    getComponent: function () { return AnimateLayoutContextProvider; },
 };
-/**
- * Sort VisualElements by tree depth, so we process the highest elements first.
- */
-var sortByDepth = function (a, b) {
-    return a.depth - b.depth;
-};
-/**
- * Create a batcher to process VisualElements
- */
-function createBatcher() {
-    var queue = new Set();
-    var add = function (child) { return queue.add(child); };
-    var flush = function (_a) {
-        var _b = _a === void 0 ? defaultHandler : _a, measureLayout = _b.measureLayout, layoutReady = _b.layoutReady;
-        var order = Array.from(queue).sort(sortByDepth);
-        /**
-         * Write: Reset any transforms on children elements so we can read their actual layout
-         */
-        order.forEach(function (child) { return child.resetTransform(); });
-        /**
-         * Read: Measure the actual layout
-         */
-        order.forEach(measureLayout);
-        /**
-         * Write: Notify the VisualElements they're ready for further write operations.
-         */
-        order.forEach(layoutReady);
-        /**
-         * After all children have started animating, ensure any Entering components are set to Present.
-         * If we add deferred animations (set up all animations and then start them in two loops) this
-         * could be moved to the start loop. But it needs to happen after all the animations configs
-         * are generated in AnimateSharedLayout as this relies on presence data
-         */
-        order.forEach(function (child) {
-            if (child.isPresent)
-                child.presence = Presence.Present;
-        });
-        queue.clear();
-    };
-    return { add: add, flush: flush };
-}
-function isSharedLayout(context) {
-    return !!context.forceUpdate;
-}
-var SharedLayoutContext = React.createContext(createBatcher());
 
 /**
  * This component is responsible for scheduling the measuring of the motion component
  */
 var Measure = /** @class */ (function (_super) {
     __extends(Measure, _super);
-    function Measure(props) {
-        var _this = _super.call(this, props) || this;
-        /**
-         * If this component isn't the child of a SyncContext, make it responsible for flushing
-         * the layout batcher
-         */
-        var syncLayout = props.syncLayout;
-        if (!isSharedLayout(syncLayout)) {
-            _this.componentDidUpdate = function () { return syncLayout.flush(); };
-        }
-        return _this;
+    function Measure() {
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     /**
      * If this is a child of a SyncContext, register the VisualElement with it on mount.
@@ -11240,135 +11374,33 @@ var Measure = /** @class */ (function (_super) {
         }
         return null;
     };
-    Measure.prototype.componentDidUpdate = function () { };
+    Measure.prototype.componentDidUpdate = function () {
+        var _a = this.props, syncLayout = _a.syncLayout, visualElement = _a.visualElement;
+        if (!isSharedLayout(syncLayout))
+            syncLayout.flush();
+        /**
+         * If this axis isn't animating as a result of this render we want to reset the targetBox
+         * to the measured box
+         */
+        visualElement.rebaseTargetBox();
+    };
     Measure.prototype.render = function () {
         return null;
     };
     return Measure;
 }(React__default.Component));
+function MeasureContextProvider(props) {
+    var syncLayout = React.useContext(SharedLayoutContext);
+    return React__default.createElement(Measure, __assign({}, props, { syncLayout: syncLayout }));
+}
 var MeasureLayout = {
     key: "measure-layout",
     shouldRender: function (props) {
         return !!props.drag || !!props.layout || !!props.layoutId;
     },
-    Component: function (props) {
-        var syncLayout = React.useContext(SharedLayoutContext);
-        return React__default.createElement(Measure, __assign({}, props, { syncLayout: syncLayout }));
-    },
+    getComponent: function () { return MeasureContextProvider; },
 };
 
-/**
- * Currently we load all features synchronously, but it would be better to offer multiple entry points
- * that allow these to be loaded in asynchronously.
- */
-var defaultFeatures = [MeasureLayout, Drag, Gestures, Exit, AnimateLayout];
-/**
- * Load features via renderless components based on the provided MotionProps
- */
-function useFeatures(isStatic, visualElement, controls, props, context, parentContext, shouldInheritVariant) {
-    var plugins = React.useContext(MotionPluginContext);
-    // If this is a static component, or we're rendering on the server, we don't load
-    // any feature components
-    if (isStatic || typeof window === "undefined")
-        return null;
-    var allFeatures = __spreadArrays(defaultFeatures, plugins.features);
-    var numFeatures = allFeatures.length;
-    var features = [];
-    // TODO: Consolidate Animation feature loading strategy with other functionality components
-    var Animation = getAnimationComponent(props);
-    if (Animation) {
-        features.push(React.createElement(Animation, { key: "animation", initial: props.initial, animate: props.animate, variants: props.variants, transition: props.transition, controls: controls, inherit: shouldInheritVariant, visualElement: visualElement }));
-    }
-    // Decide which features we should render and add them to the returned array
-    for (var i = 0; i < numFeatures; i++) {
-        var _a = allFeatures[i], shouldRender = _a.shouldRender, key = _a.key, Component = _a.Component;
-        if (shouldRender(props, parentContext)) {
-            features.push(React.createElement(Component, __assign({ key: key }, props, { localContext: context, parentContext: parentContext, visualElement: visualElement, controls: controls })));
-        }
-    }
-    return features;
-}
-
-function useSnapshotOnUnmount(visualElement) {
-    var syncLayout = React.useContext(SharedLayoutContext);
-    useUnmountEffect(function () {
-        if (isSharedLayout(syncLayout))
-            syncLayout.remove(visualElement);
-    });
-}
-
-/**
- * Create a `motion` component.
- *
- * This function accepts a Component argument, which can be either a string (ie "div"
- * for `motion.div`), or an actual React component.
- *
- * Alongside this is a config option which provides a way of rendering the provided
- * component "offline", or outside the React render cycle.
- *
- * @internal
- */
-function createMotionComponent(Component, _a) {
-    var useVisualElement = _a.useVisualElement, render = _a.render, animationControlsConfig = _a.animationControlsConfig;
-    function MotionComponent(props, externalRef) {
-        var parentContext = React.useContext(MotionContext);
-        var shouldInheritVariant = checkShouldInheritVariant(props);
-        /**
-         * If a component isStatic, we only visually update it as a
-         * result of a React re-render, rather than any interactions or animations.
-         * If this component or any ancestor isStatic, we disable hardware acceleration
-         * and don't load any additional functionality.
-         */
-        var isStatic = parentContext.static || props.static || false;
-        /**
-         * Create a VisualElement for this component. A VisualElement provides a common
-         * interface to renderer-specific APIs (ie DOM/Three.js etc) as well as
-         * providing a way of rendering to these APIs outside of the React render loop
-         * for more performant animations and interactions
-         */
-        var visualElement = useVisualElement(Component, props, parentContext.visualElement, isStatic, externalRef);
-        /**
-         * Scrape MotionValues from props and add/remove them to/from
-         * the VisualElement as necessary.
-         */
-        useMotionValues(visualElement, props);
-        /**
-         * Create animation controls for the VisualElement. It might be
-         * interesting to try and combine this with VisualElement itself in a further refactor.
-         */
-        var controls = useVisualElementAnimation(visualElement, props, animationControlsConfig);
-        /**
-         * Build the MotionContext to pass on to the next `motion` component.
-         */
-        var context = useMotionContext(parentContext, controls, visualElement, isStatic, props);
-        /**
-         * Load features as renderless components unless the component isStatic
-         */
-        var features = useFeatures(isStatic, visualElement, controls, props, context, parentContext, shouldInheritVariant);
-        var component = render(Component, props, visualElement);
-        /**
-         *
-         */
-        useSnapshotOnUnmount(visualElement);
-        // The mount order and hierarchy is specific to ensure our element ref is hydrated by the time
-        // all plugins and features has to execute.
-        return (React.createElement(React.Fragment, null,
-            React.createElement(MotionContext.Provider, { value: context }, component),
-            features));
-    }
-    return React.forwardRef(MotionComponent);
-}
-
-/**
- * DOM-specific config for `motion` components
- */
-var config = {
-    useVisualElement: useDomVisualElement,
-    render: render,
-    animationControlsConfig: {
-        makeTargetAnimatable: parseDomVariant,
-    },
-};
 /**
  * Convert any React component into a `motion` component. The provided component
  * **must** use `React.forwardRef` to the underlying DOM component you want to animate.
@@ -11383,17 +11415,28 @@ var config = {
  *
  * @public
  */
-function custom(Component) {
-    return createMotionComponent(Component, config);
-}
-var componentCache = new Map();
-function get$1(target, key) {
-    if (key === "custom")
-        return target.custom;
-    if (!componentCache.has(key)) {
-        componentCache.set(key, createMotionComponent(key, config));
+function createMotionProxy(defaultFeatures) {
+    var config = {
+        defaultFeatures: defaultFeatures,
+        useVisualElement: useDomVisualElement,
+        render: render,
+        animationControlsConfig: {
+            makeTargetAnimatable: parseDomVariant,
+        },
+    };
+    function custom(Component) {
+        return createMotionComponent(Component, config);
     }
-    return componentCache.get(key);
+    var componentCache = new Map();
+    function get(target, key) {
+        if (key === "custom")
+            return target.custom;
+        if (!componentCache.has(key)) {
+            componentCache.set(key, createMotionComponent(key, config));
+        }
+        return componentCache.get(key);
+    }
+    return new Proxy({ custom: custom }, { get: get });
 }
 /**
  * HTML & SVG components, optimised for use with gestures and animation. These can be used as
@@ -11401,7 +11444,14 @@ function get$1(target, key) {
  *
  * @public
  */
-var motion = new Proxy({ custom: custom }, { get: get$1 });
+var motion = /*@__PURE__*/ createMotionProxy([
+    MeasureLayout,
+    Animation,
+    Drag,
+    Gestures,
+    Exit,
+    AnimateLayout,
+]);
 
 function createSwitchAnimation(child, stack) {
     if (stack && child !== stack.lead) {
@@ -11485,7 +11535,7 @@ function createCrossfadeAnimation(child, stack) {
  *  - If the last child is exiting, the last *encountered* exiting component
  */
 function findLeadAndFollow(stack, _a) {
-    var prevLead = _a[0], prevFollow = _a[1];
+    var _b = __read(_a, 2), prevLead = _b[0], prevFollow = _b[1];
     var lead = undefined;
     var leadIndex = 0;
     var follow = undefined;
@@ -11548,25 +11598,7 @@ var LayoutStack = /** @class */ (function () {
     }
     LayoutStack.prototype.add = function (child) {
         var _a;
-        var layoutOrder = child.config.layoutOrder;
-        if (layoutOrder === undefined) {
-            this.order.push(child);
-        }
-        else {
-            var index = this.order.findIndex(function (stackChild) {
-                return layoutOrder <= (stackChild.config.layoutOrder || 0);
-            });
-            if (index === -1) {
-                child.presence = this.hasChildren
-                    ? Presence.Entering
-                    : Presence.Present;
-                index = this.order.length;
-            }
-            this.order.splice(index, 0, child);
-        }
-        /**
-         *
-         */
+        this.order.push(child);
         // Load previous values from snapshot into this child
         // TODO Neaten up
         // TODO Double check when reimplementing move
@@ -11595,10 +11627,10 @@ var LayoutStack = /** @class */ (function () {
     LayoutStack.prototype.updateLeadAndFollow = function () {
         this.prevLead = this.lead;
         this.prevFollow = this.follow;
-        var _a = findLeadAndFollow(this.order, [
+        var _a = __read(findLeadAndFollow(this.order, [
             this.lead,
             this.follow,
-        ]), lead = _a[0], follow = _a[1];
+        ]), 2), lead = _a[0], follow = _a[1];
         this.lead = lead;
         this.follow = follow;
     };
@@ -11626,17 +11658,9 @@ var LayoutStack = /** @class */ (function () {
         var _a;
         return this.lead && ((_a = this.lead) === null || _a === void 0 ? void 0 : _a.presence) !== Presence.Exiting;
     };
-    LayoutStack.prototype.shouldStackAnimate = function () {
-        return true;
-        // return this.lead && this.lead?.isPresent
-        //     ? this.lead?.props?._shouldAnimate === true
-        //     : this.follow && this.follow?.props._shouldAnimate === true
-    };
     LayoutStack.prototype.getFollowOrigin = function () {
         var _a;
-        // This shouldAnimate check is quite specifically a fix for the optimisation made in Framer
-        // where components are kept in the tree ready to be re-used
-        return this.follow // && this.follow.shouldAnimate
+        return this.follow
             ? this.follow.prevViewportBox
             : (_a = this.snapshot) === null || _a === void 0 ? void 0 : _a.boundingBox;
     };
@@ -11781,7 +11805,7 @@ var AnimateSharedLayout = /** @class */ (function (_super) {
          */
         this.updateScheduled = true;
         /**
-         * Snapshot children
+         * Read: Snapshot children
          */
         this.children.forEach(function (child) { return child.snapshotBoundingBox(); });
         /**
@@ -11871,6 +11895,7 @@ var StateVisualElement = /** @class */ (function (_super) {
         _this.initialState = {};
         return _this;
     }
+    StateVisualElement.prototype.updateLayoutDelta = function () { };
     StateVisualElement.prototype.build = function () { };
     StateVisualElement.prototype.clean = function () { };
     StateVisualElement.prototype.getBoundingBox = function () {
@@ -12475,10 +12500,10 @@ var TableRow = React.memo(function (_ref) {
   }, [defaultExpanderDisabled, expandOnRowDoubleClicked, expandableRows, handleExpanded, onRowDoubleClicked, row]);
   var onDragEvt = React.useCallback(function (e) {
     onDrag(row, e);
-  }, [onDrag, row]);
+  }, [draggable, row]);
   var onDragEndEvt = React.useCallback(function (e, info) {
     onDragEnd(row, e, info);
-  }, [onDragEnd, row]);
+  }, [draggable, row]);
   var extendedRowStyle = getConditionalStyle(row, conditionalRowStyles);
   var hightlightSelected = selectableRowsHighlight && selected;
   var inheritStyles = inheritConditionalStyles ? extendedRowStyle : null;
@@ -13849,8 +13874,8 @@ var defaultThemes = {
     },
     button: {
       "default": 'rgba(0,0,0,.54)',
-      focus: 'rgba(0,0,0,.12)',
-      hover: 'rgba(0,0,0,.12)',
+      focus: 'rgba(0,0,0,0)',
+      hover: 'rgba(0,0,0,0)',
       disabled: 'rgba(0, 0, 0, .18)'
     },
     sortFocus: {
