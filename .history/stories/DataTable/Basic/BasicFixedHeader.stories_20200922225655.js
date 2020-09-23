@@ -22,7 +22,7 @@ const columns = [
   },
 ];
 
-const rowDragged = () => console.log("in space");
+const rowDragged = event => event.stopPropagation();
 
 const BasicFixedHeader = () => (
   <DataTable

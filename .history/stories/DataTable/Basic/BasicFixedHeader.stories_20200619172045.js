@@ -22,8 +22,6 @@ const columns = [
   },
 ];
 
-const rowDragged = () => console.log("in space");
-
 const BasicFixedHeader = () => (
   <DataTable
     title="Movie List"
@@ -31,9 +29,6 @@ const BasicFixedHeader = () => (
     data={data}
     fixedHeader
     fixedHeaderScrollHeight="300px"
-    draggable
-    onDrag={rowDragged}
-    onDragEnd={rowDragged}
   />
 );
 
