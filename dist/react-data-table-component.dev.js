@@ -14495,7 +14495,13 @@ var DataTable = React.memo(function (_ref) {
     style: style,
     overflowYOffset: overflowYOffset,
     overflowY: overflowY
-  }, wrapperProps), !noHeader && /*#__PURE__*/React__default.createElement(TableHeader, {
+  }, wrapperProps), enabledPagination && /*#__PURE__*/React__default.createElement(Pagination$1, {
+    onChangePage: handleChangePage,
+    onChangeRowsPerPage: handleChangeRowsPerPage,
+    rowCount: paginationTotalRows || data.length,
+    currentPage: currentPage,
+    rowsPerPage: rowsPerPage
+  }), !noHeader && /*#__PURE__*/React__default.createElement(TableHeader, {
     title: title,
     actions: actions,
     showMenu: !noContextMenu
@@ -14570,13 +14576,7 @@ var DataTable = React.memo(function (_ref) {
       onChange: onChange,
       draggable: draggable
     });
-  })))), enabledPagination && /*#__PURE__*/React__default.createElement(Pagination$1, {
-    onChangePage: handleChangePage,
-    onChangeRowsPerPage: handleChangeRowsPerPage,
-    rowCount: paginationTotalRows || data.length,
-    currentPage: currentPage,
-    rowsPerPage: rowsPerPage
-  }))));
+  })))))));
 });
 DataTable.propTypes = propTypes$1;
 DataTable.defaultProps = defaultProps;

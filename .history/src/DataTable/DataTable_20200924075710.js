@@ -314,16 +314,6 @@ const DataTable = memo(({
           overflowY={overflowY}
           {...wrapperProps}
         >
-          {enabledPagination && (
-            <Pagination
-              onChangePage={handleChangePage}
-              onChangeRowsPerPage={handleChangeRowsPerPage}
-              rowCount={paginationTotalRows || data.length}
-              currentPage={currentPage}
-              rowsPerPage={rowsPerPage}
-            />
-          )}
-
           {!noHeader && (
             <TableHeader
               title={title}
@@ -446,6 +436,16 @@ const DataTable = memo(({
               )}
             </Table>
           </TableWrapper>
+
+          {enabledPagination && (
+            <Pagination
+              onChangePage={handleChangePage}
+              onChangeRowsPerPage={handleChangeRowsPerPage}
+              rowCount={paginationTotalRows || data.length}
+              currentPage={currentPage}
+              rowsPerPage={rowsPerPage}
+            />
+          )}
         </ResponsiveWrapper>
       </DataTableProvider>
     </ThemeProvider>
