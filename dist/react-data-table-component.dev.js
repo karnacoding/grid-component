@@ -13882,7 +13882,7 @@ var defaultThemes = {
       "default": 'rgba(0, 0, 0, .54)'
     },
     selected: {
-      "default": '#e3f2fd',
+      "default": '#023373',
       text: 'rgba(0, 0, 0, 0.87)'
     },
     highlightOnHover: {
