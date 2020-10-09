@@ -14546,7 +14546,6 @@ var DataTable = React.memo(function (_ref) {
     var selected = isRowSelected(row, selectedRows, keyField);
     var expanderExpander = expandableRows && expandableRowExpanded && expandableRowExpanded(row);
     var expanderDisabled = expandableRows && expandableRowDisabled && expandableRowDisabled(row);
-    var dndDisabled = draggable(row);
     return /*#__PURE__*/React__default.createElement(TableRow, {
       id: id,
       key: id,
@@ -14575,7 +14574,7 @@ var DataTable = React.memo(function (_ref) {
       selected: selected,
       selectableRowsHighlight: selectableRowsHighlight,
       onChange: onChange,
-      draggable: dndDisabled
+      draggable: draggable
     });
   })))))));
 });
