@@ -14399,7 +14399,7 @@ var DataTable = React.memo(function (_ref) {
     } // use column's custom sorting function
 
 
-    var customSortFunction = sortDirection === 'asc' ? column.sortFunction : function (a, b) {
+    var customSortFunction = sortDirection === 'desc' ? column.sortFunction : function (a, b) {
       return column.sortFunction(a, b) * -1;
     };
     return _toConsumableArray(data).sort(customSortFunction);
@@ -14546,6 +14546,7 @@ var DataTable = React.memo(function (_ref) {
     var selected = isRowSelected(row, selectedRows, keyField);
     var expanderExpander = expandableRows && expandableRowExpanded && expandableRowExpanded(row);
     var expanderDisabled = expandableRows && expandableRowDisabled && expandableRowDisabled(row);
+    var dndDisabled = draggable(row);
     return /*#__PURE__*/React__default.createElement(TableRow, {
       id: id,
       key: id,
@@ -14574,7 +14575,7 @@ var DataTable = React.memo(function (_ref) {
       selected: selected,
       selectableRowsHighlight: selectableRowsHighlight,
       onChange: onChange,
-      draggable: draggable
+      draggable: dndDisabled
     });
   })))))));
 });

@@ -214,7 +214,7 @@ const DataTable = memo(({
     }
 
     // use column's custom sorting function
-    const customSortFunction = sortDirection === 'asc'
+    const customSortFunction = sortDirection === 'desc'
       ? column.sortFunction
       : (a, b) => column.sortFunction(a, b) * -1;
 
@@ -409,6 +409,8 @@ const DataTable = memo(({
                       && expandableRowDisabled
                       && expandableRowDisabled(row);
 
+                    const dndDisabled = draggable(row);
+
                     return (
                       <TableRow
                         id={id}
@@ -438,7 +440,7 @@ const DataTable = memo(({
                         selected={selected}
                         selectableRowsHighlight={selectableRowsHighlight}
                         onChange={onChange}
-                        draggable={draggable}
+                        draggable={dndDisabled}
                       />
                     );
                   })}
