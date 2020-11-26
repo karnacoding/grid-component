@@ -2,12 +2,13 @@
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
-function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
-
 var React = require('react');
-var React__default = _interopDefault(React);
 var styled = require('styled-components');
-var styled__default = _interopDefault(styled);
+
+function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
+
+var React__default = /*#__PURE__*/_interopDefaultLegacy(React);
+var styled__default = /*#__PURE__*/_interopDefaultLegacy(styled);
 
 function _typeof(obj) {
   "@babel/helpers - typeof";
@@ -1283,14 +1284,14 @@ if (process.env.NODE_ENV !== 'production') {
 }
 });
 
-var DataTableStateContext = React.createContext();
+var DataTableStateContext = /*#__PURE__*/React.createContext();
 var useTableContext = function useTableContext() {
   return React.useContext(DataTableStateContext);
 };
 var DataTableProvider = function DataTableProvider(_ref) {
   var children = _ref.children,
       initialState = _ref.initialState;
-  return /*#__PURE__*/React__default.createElement(DataTableStateContext.Provider, {
+  return /*#__PURE__*/React__default['default'].createElement(DataTableStateContext.Provider, {
     value: initialState
   }, children);
 };
@@ -4442,7 +4443,7 @@ function _templateObject() {
   return data;
 }
 var disabled = styled.css(_templateObject());
-var TableStyle = styled__default.div(_templateObject2(), function (props) {
+var TableStyle = styled__default['default'].div(_templateObject2(), function (props) {
   return props.disabled && disabled;
 }, function (props) {
   return props.theme.table.style;
@@ -4457,7 +4458,7 @@ function _templateObject$1() {
 
   return data;
 }
-var TableHead = styled__default.div(_templateObject$1(), function (props) {
+var TableHead = styled__default['default'].div(_templateObject$1(), function (props) {
   return props.theme.head.style;
 });
 
@@ -4481,7 +4482,7 @@ function _templateObject$2() {
   return data;
 }
 var disabled$1 = styled.css(_templateObject$2());
-var TableHeadRow = styled__default.div(_templateObject2$1(), function (props) {
+var TableHeadRow = styled__default['default'].div(_templateObject2$1(), function (props) {
   return props.theme.headRow.style;
 }, function (props) {
   return props.dense && props.theme.headRow.denseStyle;
@@ -4939,53 +4940,148 @@ var complex = {
     }
 };
 
+var clamp$1 = function (min, max, v) {
+    return Math.min(Math.max(v, min), max);
+};
+
+var safeMin = 0.001;
+var minDuration = 0.01;
+var maxDuration = 10.0;
+var minDamping = 0.05;
+var maxDamping = 1;
+function findSpring(_a) {
+    var _b = _a.duration,
+        duration = _b === void 0 ? 800 : _b,
+        _c = _a.bounce,
+        bounce = _c === void 0 ? 0.25 : _c,
+        _d = _a.velocity,
+        velocity = _d === void 0 ? 0 : _d,
+        _e = _a.mass,
+        mass = _e === void 0 ? 1 : _e;
+    var envelope;
+    var derivative;
+    warning(duration <= maxDuration * 1000, "Spring duration must be 10 seconds or less");
+    var dampingRatio = 1 - bounce;
+    dampingRatio = clamp$1(minDamping, maxDamping, dampingRatio);
+    duration = clamp$1(minDuration, maxDuration, duration / 1000);
+    if (dampingRatio < 1) {
+        envelope = function (undampedFreq) {
+            var exponentialDecay = undampedFreq * dampingRatio;
+            var delta = exponentialDecay * duration;
+            var a = exponentialDecay - velocity;
+            var b = calcAngularFreq(undampedFreq, dampingRatio);
+            var c = Math.exp(-delta);
+            return safeMin - a / b * c;
+        };
+        derivative = function (undampedFreq) {
+            var exponentialDecay = undampedFreq * dampingRatio;
+            var delta = exponentialDecay * duration;
+            var d = delta * velocity + velocity;
+            var e = Math.pow(dampingRatio, 2) * Math.pow(undampedFreq, 2) * duration;
+            var f = Math.exp(-delta);
+            var g = calcAngularFreq(Math.pow(undampedFreq, 2), dampingRatio);
+            var factor = -envelope(undampedFreq) + safeMin > 0 ? -1 : 1;
+            return factor * ((d - e) * f) / g;
+        };
+    } else {
+        envelope = function (undampedFreq) {
+            var a = Math.exp(-undampedFreq * duration);
+            var b = (undampedFreq - velocity) * duration + 1;
+            return -safeMin + a * b;
+        };
+        derivative = function (undampedFreq) {
+            var a = Math.exp(-undampedFreq * duration);
+            var b = (velocity - undampedFreq) * (duration * duration);
+            return a * b;
+        };
+    }
+    var initialGuess = 5 / duration;
+    var undampedFreq = approximateRoot(envelope, derivative, initialGuess);
+    if (isNaN(undampedFreq)) {
+        return {
+            stiffness: 100,
+            damping: 10
+        };
+    } else {
+        var stiffness = Math.pow(undampedFreq, 2) * mass;
+        return {
+            stiffness: stiffness,
+            damping: dampingRatio * 2 * Math.sqrt(mass * stiffness)
+        };
+    }
+}
+var rootIterations = 12;
+function approximateRoot(envelope, derivative, initialGuess) {
+    var result = initialGuess;
+    for (var i = 1; i < rootIterations; i++) {
+        result = result - envelope(result) / derivative(result);
+    }
+    return result;
+}
+function calcAngularFreq(undampedFreq, dampingRatio) {
+    return undampedFreq * Math.sqrt(1 - dampingRatio * dampingRatio);
+}
+
+var durationKeys = ["duration", "bounce"];
+var physicsKeys = ["stiffness", "damping", "mass"];
+function isSpringType(options, keys) {
+    return keys.some(function (key) {
+        return options[key] !== undefined;
+    });
+}
+function getSpringOptions(options) {
+    var springOptions = __assign({ velocity: 0.0, stiffness: 100, damping: 10, mass: 1.0, isResolvedFromDuration: false }, options);
+    if (!isSpringType(options, physicsKeys) && isSpringType(options, durationKeys)) {
+        var derived = findSpring(options);
+        springOptions = __assign(__assign(__assign({}, springOptions), derived), { velocity: 0.0, mass: 1.0 });
+        springOptions.isResolvedFromDuration = true;
+    }
+    return springOptions;
+}
 function spring(_a) {
     var _b = _a.from,
         from = _b === void 0 ? 0.0 : _b,
         _c = _a.to,
-        to = _c === void 0 ? 0.0 : _c,
-        _d = _a.velocity,
-        velocity = _d === void 0 ? 0.0 : _d,
-        _e = _a.stiffness,
-        stiffness = _e === void 0 ? 100 : _e,
-        _f = _a.damping,
-        damping = _f === void 0 ? 10 : _f,
-        _g = _a.mass,
-        mass = _g === void 0 ? 1.0 : _g,
-        _h = _a.restSpeed,
-        restSpeed = _h === void 0 ? 2 : _h,
-        restDelta = _a.restDelta;
+        to = _c === void 0 ? 1.0 : _c,
+        _d = _a.restSpeed,
+        restSpeed = _d === void 0 ? 2 : _d,
+        restDelta = _a.restDelta,
+        options = __rest(_a, ["from", "to", "restSpeed", "restDelta"]);
     var state = { done: false, value: from };
+    var _e = getSpringOptions(options),
+        stiffness = _e.stiffness,
+        damping = _e.damping,
+        mass = _e.mass,
+        velocity = _e.velocity,
+        isResolvedFromDuration = _e.isResolvedFromDuration;
     var resolveSpring = zero;
     var resolveVelocity = zero;
     function createSpring() {
         var initialVelocity = velocity ? -(velocity / 1000) : 0.0;
         var initialDelta = to - from;
         var dampingRatio = damping / (2 * Math.sqrt(stiffness * mass));
-        var angularFreq = Math.sqrt(stiffness / mass) / 1000;
+        var undampedAngularFreq = Math.sqrt(stiffness / mass) / 1000;
         restDelta !== null && restDelta !== void 0 ? restDelta : restDelta = Math.abs(to - from) <= 1 ? 0.01 : 0.4;
         if (dampingRatio < 1) {
+            var angularFreq_1 = calcAngularFreq(undampedAngularFreq, dampingRatio);
             resolveSpring = function (t) {
-                var envelope = Math.exp(-dampingRatio * angularFreq * t);
-                var expoDecay = angularFreq * Math.sqrt(1.0 - dampingRatio * dampingRatio);
-                return to - envelope * ((initialVelocity + dampingRatio * angularFreq * initialDelta) / expoDecay * Math.sin(expoDecay * t) + initialDelta * Math.cos(expoDecay * t));
+                var envelope = Math.exp(-dampingRatio * undampedAngularFreq * t);
+                return to - envelope * ((initialVelocity + dampingRatio * undampedAngularFreq * initialDelta) / angularFreq_1 * Math.sin(angularFreq_1 * t) + initialDelta * Math.cos(angularFreq_1 * t));
             };
             resolveVelocity = function (t) {
-                var envelope = Math.exp(-dampingRatio * angularFreq * t);
-                var expoDecay = angularFreq * Math.sqrt(1.0 - dampingRatio * dampingRatio);
-                return dampingRatio * angularFreq * envelope * (Math.sin(expoDecay * t) * (initialVelocity + dampingRatio * angularFreq * initialDelta) / expoDecay + initialDelta * Math.cos(expoDecay * t)) - envelope * (Math.cos(expoDecay * t) * (initialVelocity + dampingRatio * angularFreq * initialDelta) - expoDecay * initialDelta * Math.sin(expoDecay * t));
+                var envelope = Math.exp(-dampingRatio * undampedAngularFreq * t);
+                return dampingRatio * undampedAngularFreq * envelope * (Math.sin(angularFreq_1 * t) * (initialVelocity + dampingRatio * undampedAngularFreq * initialDelta) / angularFreq_1 + initialDelta * Math.cos(angularFreq_1 * t)) - envelope * (Math.cos(angularFreq_1 * t) * (initialVelocity + dampingRatio * undampedAngularFreq * initialDelta) - angularFreq_1 * initialDelta * Math.sin(angularFreq_1 * t));
             };
         } else if (dampingRatio === 1) {
             resolveSpring = function (t) {
-                var envelope = Math.exp(-angularFreq * t);
-                return to - envelope * (initialDelta + (initialVelocity + angularFreq * initialDelta) * t);
+                return to - Math.exp(-undampedAngularFreq * t) * (initialDelta + (initialVelocity + undampedAngularFreq * initialDelta) * t);
             };
         } else {
-            var dampedAngularFreq_1 = angularFreq * Math.sqrt(dampingRatio * dampingRatio - 1);
+            var dampedAngularFreq_1 = undampedAngularFreq * Math.sqrt(dampingRatio * dampingRatio - 1);
             resolveSpring = function (t) {
-                var envelope = Math.exp(-dampingRatio * angularFreq * t);
+                var envelope = Math.exp(-dampingRatio * undampedAngularFreq * t);
                 var freqForT = Math.min(dampedAngularFreq_1 * t, 300);
-                return to - envelope * ((initialVelocity + dampingRatio * angularFreq * initialDelta) * Math.sinh(freqForT) + dampedAngularFreq_1 * initialDelta * Math.cosh(freqForT)) / dampedAngularFreq_1;
+                return to - envelope * ((initialVelocity + dampingRatio * undampedAngularFreq * initialDelta) * Math.sinh(freqForT) + dampedAngularFreq_1 * initialDelta * Math.cosh(freqForT)) / dampedAngularFreq_1;
             };
         }
     }
@@ -4993,10 +5089,14 @@ function spring(_a) {
     return {
         next: function (t) {
             var current = resolveSpring(t);
-            var velocity = resolveVelocity(t) * 1000;
-            var isBelowVelocityThreshold = Math.abs(velocity) <= restSpeed;
-            var isBelowDisplacementThreshold = Math.abs(to - current) <= restDelta;
-            state.done = isBelowVelocityThreshold && isBelowDisplacementThreshold;
+            if (!isResolvedFromDuration) {
+                var currentVelocity = resolveVelocity(t) * 1000;
+                var isBelowVelocityThreshold = Math.abs(currentVelocity) <= restSpeed;
+                var isBelowDisplacementThreshold = Math.abs(to - current) <= restDelta;
+                state.done = isBelowVelocityThreshold && isBelowDisplacementThreshold;
+            } else {
+                state.done = t >= options.duration;
+            }
             state.value = state.done ? to : current;
             return state;
         },
@@ -5139,10 +5239,6 @@ var mixComplex = function (origin, target) {
     var targetStats = analyse(target);
     invariant(originStats.numHSL === targetStats.numHSL && originStats.numRGB === targetStats.numRGB && originStats.numNumbers >= targetStats.numNumbers, "Complex values '" + origin + "' and '" + target + "' too different to mix. Ensure all colors are of the same type.");
     return pipe(mixArray(originStats.parsed, targetStats.parsed), template);
-};
-
-var clamp$1 = function (min, max, v) {
-    return Math.min(Math.max(v, min), max);
 };
 
 var mixNumber = function (from, to) {
@@ -5376,9 +5472,9 @@ function detectAnimationFromOptions(config) {
         return types[config.type];
     }
     var keys = new Set(Object.keys(config));
-    if (keys.has("ease") || keys.has("duration")) {
+    if (keys.has("ease") || keys.has("duration") && !keys.has("dampingRatio")) {
         return keyframes;
-    } else if (keys.has("stiffness") || keys.has("mass") || keys.has("damping") || keys.has("restSpeed") || keys.has("restDelta")) {
+    } else if (keys.has("dampingRatio") || keys.has("stiffness") || keys.has("mass") || keys.has("damping") || keys.has("restSpeed") || keys.has("restDelta")) {
         return spring;
     }
     return keyframes;
@@ -6048,6 +6144,748 @@ function motionValue(init) {
 }
 
 /**
+ * Converts seconds to milliseconds
+ *
+ * @param seconds - Time in seconds.
+ * @return milliseconds - Converted time in milliseconds.
+ */
+var secondsToMilliseconds = function (seconds) { return seconds * 1000; };
+
+var easingLookup = {
+    linear: linear,
+    easeIn: easeIn,
+    easeInOut: easeInOut,
+    easeOut: easeOut,
+    circIn: circIn,
+    circInOut: circInOut,
+    circOut: circOut,
+    backIn: backIn,
+    backInOut: backInOut,
+    backOut: backOut,
+    anticipate: anticipate,
+    bounceIn: bounceIn,
+    bounceInOut: bounceInOut,
+    bounceOut: bounceOut,
+};
+var easingDefinitionToFunction = function (definition) {
+    if (Array.isArray(definition)) {
+        // If cubic bezier definition, create bezier curve
+        invariant(definition.length === 4, "Cubic bezier arrays must contain four numerical values.");
+        var _a = __read(definition, 4), x1 = _a[0], y1 = _a[1], x2 = _a[2], y2 = _a[3];
+        return cubicBezier(x1, y1, x2, y2);
+    }
+    else if (typeof definition === "string") {
+        // Else lookup from table
+        invariant(easingLookup[definition] !== undefined, "Invalid easing type '" + definition + "'");
+        return easingLookup[definition];
+    }
+    return definition;
+};
+var isEasingArray = function (ease) {
+    return Array.isArray(ease) && typeof ease[0] !== "number";
+};
+
+/**
+ * Check if a value is animatable. Examples:
+ *
+ * ✅: 100, "100px", "#fff"
+ * ❌: "block", "url(2.jpg)"
+ * @param value
+ *
+ * @internal
+ */
+var isAnimatable = function (key, value) {
+    // If the list of keys tat might be non-animatable grows, replace with Set
+    if (key === "zIndex")
+        return false;
+    // If it's a number or a keyframes array, we can animate it. We might at some point
+    // need to do a deep isAnimatable check of keyframes, or let Popmotion handle this,
+    // but for now lets leave it like this for performance reasons
+    if (typeof value === "number" || Array.isArray(value))
+        return true;
+    if (typeof value === "string" && // It's animatable if we have a string
+        complex.test(value) && // And it contains numbers and/or colors
+        !value.startsWith("url(") // Unless it starts with "url("
+    ) {
+        return true;
+    }
+    return false;
+};
+
+var isKeyframesTarget = function (v) {
+    return Array.isArray(v);
+};
+
+var underDampedSpring = function () { return ({
+    type: "spring",
+    stiffness: 500,
+    damping: 25,
+    restDelta: 0.5,
+    restSpeed: 10,
+}); };
+var overDampedSpring = function (to) { return ({
+    type: "spring",
+    stiffness: 550,
+    damping: to === 0 ? 100 : 30,
+    restDelta: 0.01,
+    restSpeed: 10,
+}); };
+var linearTween = function () { return ({
+    type: "keyframes",
+    ease: "linear",
+    duration: 0.3,
+}); };
+var keyframes$1 = function (values) { return ({
+    type: "keyframes",
+    duration: 0.8,
+    values: values,
+}); };
+var defaultTransitions = {
+    x: underDampedSpring,
+    y: underDampedSpring,
+    z: underDampedSpring,
+    rotate: underDampedSpring,
+    rotateX: underDampedSpring,
+    rotateY: underDampedSpring,
+    rotateZ: underDampedSpring,
+    scaleX: overDampedSpring,
+    scaleY: overDampedSpring,
+    scale: overDampedSpring,
+    opacity: linearTween,
+    backgroundColor: linearTween,
+    color: linearTween,
+    default: overDampedSpring,
+};
+var getDefaultTransition = function (valueKey, to) {
+    var transitionFactory;
+    if (isKeyframesTarget(to)) {
+        transitionFactory = keyframes$1;
+    }
+    else {
+        transitionFactory =
+            defaultTransitions[valueKey] || defaultTransitions.default;
+    }
+    return __assign({ to: to }, transitionFactory(to));
+};
+
+/**
+ * Decide whether a transition is defined on a given Transition.
+ * This filters out orchestration options and returns true
+ * if any options are left.
+ */
+function isTransitionDefined(_a) {
+    var when = _a.when, delay = _a.delay, delayChildren = _a.delayChildren, staggerChildren = _a.staggerChildren, staggerDirection = _a.staggerDirection, repeat = _a.repeat, repeatType = _a.repeatType, repeatDelay = _a.repeatDelay, from = _a.from, transition = __rest(_a, ["when", "delay", "delayChildren", "staggerChildren", "staggerDirection", "repeat", "repeatType", "repeatDelay", "from"]);
+    return !!Object.keys(transition).length;
+}
+/**
+ * Convert Framer Motion's Transition type into Popmotion-compatible options.
+ */
+function convertTransitionToAnimationOptions(_a) {
+    var yoyo = _a.yoyo, loop = _a.loop, flip = _a.flip, ease = _a.ease, times = _a.times, transition = __rest(_a, ["yoyo", "loop", "flip", "ease", "times"]);
+    var options = __assign({}, transition);
+    if (times) {
+        options.offset = times;
+    }
+    /**
+     * Convert any existing durations from seconds to milliseconds
+     */
+    if (transition.duration)
+        options["duration"] = secondsToMilliseconds(transition.duration);
+    if (transition.repeatDelay)
+        options.repeatDelay = secondsToMilliseconds(transition.repeatDelay);
+    /**
+     * Map easing names to Popmotion's easing functions
+     */
+    if (ease) {
+        options["ease"] = isEasingArray(ease)
+            ? ease.map(easingDefinitionToFunction)
+            : easingDefinitionToFunction(ease);
+    }
+    /**
+     * Support legacy transition API
+     */
+    if (transition.type === "tween")
+        options.type = "keyframes";
+    if (yoyo) {
+        options.repeatType = "reverse";
+    }
+    else if (loop) {
+        options.repeatType = "loop";
+    }
+    else if (flip) {
+        options.repeatType = "mirror";
+    }
+    options.repeat = loop || yoyo || flip || transition.repeat;
+    /**
+     * TODO: Popmotion 9 has the ability to automatically detect whether to use
+     * a keyframes or spring animation, but does so by detecting velocity and other spring options.
+     * It'd be good to introduce a similar thing here.
+     */
+    if (transition.type !== "spring")
+        options.type = "keyframes";
+    return options;
+}
+/**
+ * Get the delay for a value by checking Transition with decreasing specificity.
+ */
+function getDelayFromTransition(transition, key) {
+    var _a, _b, _c, _d, _e;
+    return ((_e = (_d = (_b = (_a = transition[key]) === null || _a === void 0 ? void 0 : _a.delay) !== null && _b !== void 0 ? _b : (_c = transition["default"]) === null || _c === void 0 ? void 0 : _c.delay) !== null && _d !== void 0 ? _d : transition.delay) !== null && _e !== void 0 ? _e : 0);
+}
+function hydrateKeyframes(options) {
+    if (Array.isArray(options.to) && options.to[0] === null) {
+        options.to = __spread(options.to);
+        options.to[0] = options.from;
+    }
+    return options;
+}
+function getPopmotionAnimationOptions(transition, options, key) {
+    var _a;
+    if (Array.isArray(options.to)) {
+        (_a = transition.duration) !== null && _a !== void 0 ? _a : (transition.duration = 0.8);
+    }
+    hydrateKeyframes(options);
+    /**
+     * Get a default transition if none is determined to be defined.
+     */
+    if (!isTransitionDefined(transition)) {
+        transition = __assign(__assign({}, transition), getDefaultTransition(key, options.to));
+    }
+    return __assign(__assign({}, options), convertTransitionToAnimationOptions(transition));
+}
+/**
+ *
+ */
+function getAnimation(key, value, target, transition, onComplete) {
+    var _a;
+    var valueTransition = getValueTransition(transition, key);
+    var origin = (_a = valueTransition.from) !== null && _a !== void 0 ? _a : value.get();
+    var isTargetAnimatable = isAnimatable(key, target);
+    /**
+     * If we're trying to animate from "none", try and get an animatable version
+     * of the target. This could be improved to work both ways.
+     */
+    if (origin === "none" && isTargetAnimatable && typeof target === "string") {
+        origin = complex.getAnimatableNone(target);
+    }
+    var isOriginAnimatable = isAnimatable(key, origin);
+    warning(isOriginAnimatable === isTargetAnimatable, "You are trying to animate " + key + " from \"" + origin + "\" to \"" + target + "\". " + origin + " is not an animatable value - to enable this animation set " + origin + " to a value animatable to " + target + " via the `style` property.");
+    function start() {
+        var options = {
+            from: origin,
+            to: target,
+            velocity: value.getVelocity(),
+            onComplete: onComplete,
+            onUpdate: function (v) { return value.set(v); },
+        };
+        return valueTransition.type === "inertia" ||
+            valueTransition.type === "decay"
+            ? inertia(__assign(__assign({}, options), valueTransition))
+            : animate(__assign(__assign({}, getPopmotionAnimationOptions(valueTransition, options, key)), { onUpdate: function (v) {
+                    var _a;
+                    options.onUpdate(v);
+                    (_a = valueTransition.onUpdate) === null || _a === void 0 ? void 0 : _a.call(valueTransition, v);
+                }, onComplete: function () {
+                    var _a;
+                    options.onComplete();
+                    (_a = valueTransition.onComplete) === null || _a === void 0 ? void 0 : _a.call(valueTransition);
+                } }));
+    }
+    function set() {
+        var _a;
+        value.set(target);
+        onComplete();
+        (_a = valueTransition === null || valueTransition === void 0 ? void 0 : valueTransition.onComplete) === null || _a === void 0 ? void 0 : _a.call(valueTransition);
+        return { stop: function () { } };
+    }
+    return !isOriginAnimatable ||
+        !isTargetAnimatable ||
+        valueTransition.type === false
+        ? set
+        : start;
+}
+function getValueTransition(transition, key) {
+    return transition[key] || transition["default"] || transition;
+}
+/**
+ * Start animation on a MotionValue. This function is an interface between
+ * Framer Motion and Popmotion
+ *
+ * @internal
+ */
+function startAnimation(key, value, target, transition) {
+    if (transition === void 0) { transition = {}; }
+    return value.start(function (onComplete) {
+        var delayTimer;
+        var controls;
+        var animation = getAnimation(key, value, target, transition, onComplete);
+        var delay = getDelayFromTransition(transition, key);
+        var start = function () { return (controls = animation()); };
+        if (delay) {
+            delayTimer = setTimeout(start, secondsToMilliseconds(delay));
+        }
+        else {
+            start();
+        }
+        return function () {
+            clearTimeout(delayTimer);
+            controls === null || controls === void 0 ? void 0 : controls.stop();
+        };
+    });
+}
+var resolveFinalValueInKeyframes = function (v) {
+    // TODO maybe throw if v.length - 1 is placeholder token?
+    return isKeyframesTarget(v) ? v[v.length - 1] || 0 : v;
+};
+
+/**
+ * Check if value is a numerical string, ie a string that is purely a number eg "100" or "-100.1"
+ */
+var isNumericalString = function (v) { return /^\-?\d*\.?\d+$/.test(v); };
+
+/**
+ * ValueType for "auto"
+ */
+var auto = {
+    test: function (v) { return v === "auto"; },
+    parse: function (v) { return v; },
+};
+/**
+ * ValueType for ints
+ */
+var int = __assign(__assign({}, number), { transform: Math.round });
+/**
+ * A map of default value types for common values
+ */
+var defaultValueTypes = {
+    // Color props
+    color: color,
+    backgroundColor: color,
+    outlineColor: color,
+    fill: color,
+    stroke: color,
+    // Border props
+    borderColor: color,
+    borderTopColor: color,
+    borderRightColor: color,
+    borderBottomColor: color,
+    borderLeftColor: color,
+    borderWidth: px,
+    borderTopWidth: px,
+    borderRightWidth: px,
+    borderBottomWidth: px,
+    borderLeftWidth: px,
+    borderRadius: px,
+    radius: px,
+    borderTopLeftRadius: px,
+    borderTopRightRadius: px,
+    borderBottomRightRadius: px,
+    borderBottomLeftRadius: px,
+    // Positioning props
+    width: px,
+    maxWidth: px,
+    height: px,
+    maxHeight: px,
+    size: px,
+    top: px,
+    right: px,
+    bottom: px,
+    left: px,
+    // Spacing props
+    padding: px,
+    paddingTop: px,
+    paddingRight: px,
+    paddingBottom: px,
+    paddingLeft: px,
+    margin: px,
+    marginTop: px,
+    marginRight: px,
+    marginBottom: px,
+    marginLeft: px,
+    // Transform props
+    rotate: degrees,
+    rotateX: degrees,
+    rotateY: degrees,
+    rotateZ: degrees,
+    scale: scale,
+    scaleX: scale,
+    scaleY: scale,
+    scaleZ: scale,
+    skew: degrees,
+    skewX: degrees,
+    skewY: degrees,
+    distance: px,
+    translateX: px,
+    translateY: px,
+    translateZ: px,
+    x: px,
+    y: px,
+    z: px,
+    perspective: px,
+    transformPerspective: px,
+    opacity: alpha,
+    originX: progressPercentage,
+    originY: progressPercentage,
+    originZ: px,
+    // Misc
+    zIndex: int,
+    // SVG
+    fillOpacity: alpha,
+    strokeOpacity: alpha,
+    numOctaves: int,
+};
+/**
+ * A list of value types commonly used for dimensions
+ */
+var dimensionValueTypes = [number, px, percent, degrees, vw, vh, auto];
+/**
+ * Tests a provided value against a ValueType
+ */
+var testValueType = function (v) { return function (type) { return type.test(v); }; };
+/**
+ * Tests a dimensional value against the list of dimension ValueTypes
+ */
+var findDimensionValueType = function (v) {
+    return dimensionValueTypes.find(testValueType(v));
+};
+/**
+ * A list of all ValueTypes
+ */
+var valueTypes = __spread(dimensionValueTypes, [color, complex]);
+/**
+ * Tests a value against the list of ValueTypes
+ */
+var findValueType = function (v) { return valueTypes.find(testValueType(v)); };
+/**
+ * Gets the default ValueType for the provided value key
+ */
+var getDefaultValueType = function (key) { return defaultValueTypes[key]; };
+/**
+ * Provided a value and a ValueType, returns the value as that value type.
+ */
+var getValueAsType = function (value, type) {
+    return type && typeof value === "number"
+        ? type.transform(value)
+        : value;
+};
+
+/**
+ * Decides if the supplied variable is a function that returns a variant
+ */
+function isVariantResolver(variant) {
+    return typeof variant === "function";
+}
+/**
+ * Decides if the supplied variable is an array of variant labels
+ */
+function isVariantLabels(v) {
+    return Array.isArray(v);
+}
+/**
+ * Decides if the supplied variable is variant label
+ */
+function isVariantLabel(v) {
+    return typeof v === "string" || isVariantLabels(v);
+}
+/**
+ * Creates an object containing the latest state of every MotionValue on a VisualElement
+ */
+function getCurrent(visualElement) {
+    var current = {};
+    visualElement.forEachValue(function (value, key) { return (current[key] = value.get()); });
+    return current;
+}
+/**
+ * Creates an object containing the latest velocity of every MotionValue on a VisualElement
+ */
+function getVelocity(visualElement) {
+    var velocity = {};
+    visualElement.forEachValue(function (value, key) { return (velocity[key] = value.getVelocity()); });
+    return velocity;
+}
+/**
+ * Resovles a variant if it's a variant resolver
+ */
+function resolveVariant(visualElement, variant, custom) {
+    var resolved = {};
+    if (!variant) {
+        return resolved;
+    }
+    else if (isVariantResolver(variant)) {
+        resolved = variant(custom !== null && custom !== void 0 ? custom : visualElement.getVariantPayload(), getCurrent(visualElement), getVelocity(visualElement));
+    }
+    else {
+        resolved = variant;
+    }
+    return __assign({ transition: visualElement.getDefaultTransition() }, resolved);
+}
+
+/**
+ * Set VisualElement's MotionValue, creating a new MotionValue for it if
+ * it doesn't exist.
+ */
+function setMotionValue(visualElement, key, value) {
+    if (visualElement.hasValue(key)) {
+        visualElement.getValue(key).set(value);
+    }
+    else {
+        visualElement.addValue(key, motionValue(value));
+    }
+}
+function setTarget(visualElement, definition, _a) {
+    var priority = (_a === void 0 ? {} : _a).priority;
+    var _b = visualElement.makeTargetAnimatable(resolveVariant(visualElement, definition), false), _c = _b.transitionEnd, transitionEnd = _c === void 0 ? {} : _c, transition = _b.transition, target = __rest(_b, ["transitionEnd", "transition"]);
+    target = __assign(__assign({}, target), transitionEnd);
+    for (var key in target) {
+        var value = resolveFinalValueInKeyframes(target[key]);
+        setMotionValue(visualElement, key, value);
+        if (!priority)
+            visualElement.baseTarget[key] = value;
+    }
+}
+function setVariants(visualElement, variantLabels) {
+    var reversedLabels = __spread(variantLabels).reverse();
+    reversedLabels.forEach(function (key) {
+        var _a;
+        setTarget(visualElement, visualElement.getVariant(key));
+        (_a = visualElement.variantChildren) === null || _a === void 0 ? void 0 : _a.forEach(function (child) {
+            setVariants(child, variantLabels);
+        });
+    });
+}
+function setValues(visualElement, definition) {
+    if (Array.isArray(definition)) {
+        return setVariants(visualElement, definition);
+    }
+    else if (typeof definition === "string") {
+        return setVariants(visualElement, [definition]);
+    }
+    else {
+        setTarget(visualElement, definition);
+    }
+}
+function checkTargetForNewValues(visualElement, target, origin) {
+    var _a, _b;
+    var _c;
+    var newValueKeys = Object.keys(target).filter(function (key) { return !visualElement.hasValue(key); });
+    var numNewValues = newValueKeys.length;
+    if (!numNewValues)
+        return;
+    for (var i = 0; i < numNewValues; i++) {
+        var key = newValueKeys[i];
+        var targetValue = target[key];
+        var value = null;
+        // If this is a keyframes value, we can attempt to use the first value in the
+        // array as that's going to be the first value of the animation anyway
+        if (Array.isArray(targetValue)) {
+            value = targetValue[0];
+        }
+        // If it isn't a keyframes or the first keyframes value was set as `null`, read the
+        // value from the DOM. It might be worth investigating whether to check props (for SVG)
+        // or props.style (for HTML) if the value exists there before attempting to read.
+        if (value === null) {
+            var readValue = (_a = origin[key]) !== null && _a !== void 0 ? _a : visualElement.readNativeValue(key);
+            value = readValue !== undefined ? readValue : target[key];
+            invariant(value !== null, "No initial value for \"" + key + "\" can be inferred. Ensure an initial value for \"" + key + "\" is defined on the component.");
+        }
+        if (typeof value === "string" && isNumericalString(value)) {
+            // If this is a number read as a string, ie "0" or "200", convert it to a number
+            value = parseFloat(value);
+        }
+        else if (!findValueType(value) && complex.test(targetValue)) {
+            // If value is not recognised as animatable, ie "none", create an animatable version origin based on the target
+            value = complex.getAnimatableNone(targetValue);
+        }
+        visualElement.addValue(key, motionValue(value));
+        (_b = (_c = origin)[key]) !== null && _b !== void 0 ? _b : (_c[key] = value);
+        visualElement.baseTarget[key] = value;
+    }
+}
+function getOriginFromTransition(key, transition) {
+    if (!transition)
+        return;
+    var valueTransition = transition[key] || transition["default"] || transition;
+    return valueTransition.from;
+}
+function getOrigin(target, transition, visualElement) {
+    var _a, _b;
+    var origin = {};
+    for (var key in target) {
+        origin[key] = (_a = getOriginFromTransition(key, transition)) !== null && _a !== void 0 ? _a : (_b = visualElement.getValue(key)) === null || _b === void 0 ? void 0 : _b.get();
+    }
+    return origin;
+}
+
+/**
+ * @internal
+ */
+function startVisualElementAnimation(visualElement, definition, opts) {
+    if (opts === void 0) { opts = {}; }
+    if (opts.priority) {
+        visualElement.activeOverrides.add(opts.priority);
+    }
+    visualElement.resetIsAnimating(opts.priority);
+    var animation;
+    if (isVariantLabels(definition)) {
+        animation = animateVariantLabels(visualElement, definition, opts);
+    }
+    else if (isVariantLabel(definition)) {
+        animation = animateVariant(visualElement, definition, opts);
+    }
+    else {
+        animation = animateTarget(visualElement, definition, opts);
+    }
+    visualElement.onAnimationStart();
+    return animation.then(function () { return visualElement.onAnimationComplete(); });
+}
+function animateVariantLabels(visualElement, variantLabels, opts) {
+    var animations = __spread(variantLabels).reverse()
+        .map(function (label) { return animateVariant(visualElement, label, opts); });
+    return Promise.all(animations);
+}
+function animateVariant(visualElement, label, opts) {
+    var _a;
+    var priority = (opts && opts.priority) || 0;
+    var variantDefinition = visualElement.getVariant(label);
+    var variant = resolveVariant(visualElement, variantDefinition, opts && opts.custom);
+    var transition = variant.transition || {};
+    /**
+     * If we have a variant, create a callback that runs it as an animation.
+     * Otherwise, we resolve a Promise immediately for a composable no-op.
+     */
+    var getAnimation = variantDefinition
+        ? function () { return animateTarget(visualElement, variant, opts); }
+        : function () { return Promise.resolve(); };
+    /**
+     * If we have children, create a callback that runs all their animations.
+     * Otherwise, we resolve a Promise immediately for a composable no-op.
+     */
+    var getChildrenAnimations = ((_a = visualElement.variantChildrenOrder) === null || _a === void 0 ? void 0 : _a.size) ? function (forwardDelay) {
+        if (forwardDelay === void 0) { forwardDelay = 0; }
+        var _a = transition.delayChildren, delayChildren = _a === void 0 ? 0 : _a;
+        return animateChildren(visualElement, label, delayChildren + forwardDelay, transition.staggerChildren, transition.staggerDirection, priority, opts === null || opts === void 0 ? void 0 : opts.custom);
+    }
+        : function () { return Promise.resolve(); };
+    /**
+     * If the transition explicitly defines a "when" option, we need to resolve either
+     * this animation or all children animations before playing the other.
+     */
+    var when = transition.when;
+    if (when) {
+        var _b = __read(when === "beforeChildren"
+            ? [getAnimation, getChildrenAnimations]
+            : [getChildrenAnimations, getAnimation], 2), first = _b[0], last = _b[1];
+        return first().then(last);
+    }
+    else {
+        return Promise.all([getAnimation(), getChildrenAnimations(opts === null || opts === void 0 ? void 0 : opts.delay)]);
+    }
+}
+function animateChildren(visualElement, variantLabel, delayChildren, staggerChildren, staggerDirection, priority, custom) {
+    if (delayChildren === void 0) { delayChildren = 0; }
+    if (staggerChildren === void 0) { staggerChildren = 0; }
+    if (staggerDirection === void 0) { staggerDirection = 1; }
+    if (priority === void 0) { priority = 0; }
+    var animations = [];
+    var maxStaggerDuration = (visualElement.variantChildrenOrder.size - 1) * staggerChildren;
+    var generateStaggerDuration = staggerDirection === 1
+        ? function (i) { return i * staggerChildren; }
+        : function (i) { return maxStaggerDuration - i * staggerChildren; };
+    Array.from(visualElement.variantChildrenOrder).forEach(function (child, i) {
+        var animation = animateVariant(child, variantLabel, {
+            priority: priority,
+            delay: delayChildren + generateStaggerDuration(i),
+            custom: custom,
+        });
+        animations.push(animation);
+    });
+    return Promise.all(animations);
+}
+function stopAnimation(visualElement) {
+    visualElement.forEachValue(function (value) { return value.stop(); });
+}
+function animateTarget(visualElement, definition, _a) {
+    var _b = _a === void 0 ? {} : _a, _c = _b.delay, delay = _c === void 0 ? 0 : _c, _d = _b.priority, priority = _d === void 0 ? 0 : _d, transitionOverride = _b.transitionOverride, custom = _b.custom;
+    var targetAndTransition = resolveVariant(visualElement, definition, custom);
+    if (transitionOverride)
+        targetAndTransition.transition = transitionOverride;
+    var _e = visualElement.makeTargetAnimatable(targetAndTransition), transitionEnd = _e.transitionEnd, transition = _e.transition, target = __rest(_e, ["transitionEnd", "transition"]);
+    if (priority)
+        visualElement.resolvedOverrides[priority] = target;
+    var animations = [];
+    for (var key in target) {
+        var value = visualElement.getValue(key);
+        if (!value || !target || target[key] === undefined)
+            continue;
+        var valueTarget = target[key];
+        if (!priority) {
+            visualElement.baseTarget[key] = resolveFinalValueInKeyframes(valueTarget);
+        }
+        if (visualElement.isAnimating.has(key))
+            continue;
+        visualElement.isAnimating.add(key);
+        animations.push(startAnimation(key, value, valueTarget, __assign({ delay: delay }, transition)));
+    }
+    var allAnimations = Promise.all(animations);
+    return transitionEnd
+        ? allAnimations.then(function () {
+            return setTarget(visualElement, transitionEnd, { priority: priority });
+        })
+        : allAnimations;
+}
+
+function setOverride(visualElement, definition, index) {
+    var _a;
+    visualElement.overrides[index] = definition;
+    (_a = visualElement.variantChildren) === null || _a === void 0 ? void 0 : _a.forEach(function (child) {
+        setOverride(child, definition, index);
+    });
+}
+function startOverride(visualElement, index) {
+    var override = visualElement.overrides[index];
+    if (override) {
+        return startVisualElementAnimation(visualElement, override, {
+            priority: index,
+        });
+    }
+}
+function clearOverride(visualElement, index) {
+    var _a;
+    (_a = visualElement.variantChildrenOrder) === null || _a === void 0 ? void 0 : _a.forEach(function (child) {
+        clearOverride(child, index);
+    });
+    var override = visualElement.overrides[index];
+    if (!override)
+        return;
+    visualElement.activeOverrides.delete(index);
+    var highest = getHighestOverridePriortiy(visualElement);
+    visualElement.resetIsAnimating();
+    if (highest) {
+        var highestOverride = visualElement.overrides[highest];
+        highestOverride && startOverride(visualElement, highest);
+    }
+    // Figure out which remaining values were affected by the override and animate those
+    var overrideTarget = visualElement.resolvedOverrides[index];
+    if (!overrideTarget)
+        return;
+    var remainingValues = {};
+    for (var key in visualElement.baseTarget) {
+        if (overrideTarget[key] !== undefined) {
+            remainingValues[key] = visualElement.baseTarget[key];
+        }
+    }
+    visualElement.onAnimationStart();
+    animateTarget(visualElement, remainingValues).then(function () {
+        visualElement.onAnimationComplete();
+    });
+}
+function getHighestOverridePriortiy(visualElement) {
+    if (!visualElement.activeOverrides.size)
+        return 0;
+    return Math.max.apply(Math, __spread(Array.from(visualElement.activeOverrides)));
+}
+
+/**
  * VisualElement is an abstract class that provides a generic animation-optimised interface to the
  * underlying renderer.
  *
@@ -6060,6 +6898,26 @@ var VisualElement = /** @class */ (function () {
         var _this = this;
         // An iterable list of current children
         this.children = new Set();
+        /**
+         * A set of values that we animate back to when a value is cleared of all overrides.
+         */
+        this.baseTarget = {};
+        /**
+         * A series of target overrides that we can animate to/from when overrides are set/cleared.
+         */
+        this.overrides = [];
+        /**
+         * A series of target overrides as they were originally resolved.
+         */
+        this.resolvedOverrides = [];
+        /**
+         * A Set of currently active override indexes
+         */
+        this.activeOverrides = new Set();
+        /**
+         * A Set of value keys that are currently animating.
+         */
+        this.isAnimating = new Set();
         // The latest resolved MotionValues
         this.latest = {};
         // A map of MotionValues used to animate this element
@@ -6068,6 +6926,7 @@ var VisualElement = /** @class */ (function () {
         this.valueSubscriptions = new Map();
         // A configuration for this VisualElement, each derived class can extend this.
         this.config = {};
+        this.isMounted = false;
         // A pre-bound call to the user-provided `onUpdate` callback. This won't
         // be called more than once per frame.
         this.update = function () { return _this.config.onUpdate(_this.latest); };
@@ -6096,6 +6955,58 @@ var VisualElement = /** @class */ (function () {
         // outside the VisualElement and be handled in a hook.
         this.externalRef = ref;
     }
+    VisualElement.prototype.getVariantPayload = function () {
+        return this.config.custom;
+    };
+    VisualElement.prototype.getVariant = function (label) {
+        var _a;
+        return (_a = this.config.variants) === null || _a === void 0 ? void 0 : _a[label];
+    };
+    VisualElement.prototype.addVariantChild = function (visualElement) {
+        if (!this.variantChildren)
+            this.variantChildren = new Set();
+        this.variantChildren.add(visualElement);
+    };
+    VisualElement.prototype.addVariantChildOrder = function (visualElement) {
+        if (!this.variantChildrenOrder)
+            this.variantChildrenOrder = new Set();
+        this.variantChildrenOrder.add(visualElement);
+    };
+    VisualElement.prototype.onAnimationStart = function () {
+        var _a, _b;
+        (_b = (_a = this.config).onAnimationStart) === null || _b === void 0 ? void 0 : _b.call(_a);
+    };
+    VisualElement.prototype.onAnimationComplete = function () {
+        var _a, _b;
+        this.isMounted && ((_b = (_a = this.config).onAnimationComplete) === null || _b === void 0 ? void 0 : _b.call(_a));
+    };
+    VisualElement.prototype.getDefaultTransition = function () {
+        return this.config.transition;
+    };
+    VisualElement.prototype.resetIsAnimating = function (priority) {
+        var _a;
+        if (priority === void 0) { priority = 0; }
+        this.isAnimating.clear();
+        // If this isn't the highest priority gesture, block the animation
+        // of anything that's currently being animated
+        if (priority < getHighestOverridePriortiy(this)) {
+            this.checkOverrideIsAnimating(priority);
+        }
+        (_a = this.variantChildren) === null || _a === void 0 ? void 0 : _a.forEach(function (child) {
+            return child.resetIsAnimating(priority);
+        });
+    };
+    VisualElement.prototype.checkOverrideIsAnimating = function (priority) {
+        var numOverrides = this.overrides.length;
+        for (var i = priority + 1; i < numOverrides; i++) {
+            var resolvedOverride = this.resolvedOverrides[i];
+            if (resolvedOverride) {
+                for (var key in resolvedOverride) {
+                    this.isAnimating.add(key);
+                }
+            }
+        }
+    };
     VisualElement.prototype.subscribe = function (child) {
         var _this = this;
         this.children.add(child);
@@ -6274,132 +7185,6 @@ function delta() {
         y: __assign({}, zeroDelta),
     };
 }
-
-/**
- * ValueType for "auto"
- */
-var auto = {
-    test: function (v) { return v === "auto"; },
-    parse: function (v) { return v; },
-};
-/**
- * ValueType for ints
- */
-var int = __assign(__assign({}, number), { transform: Math.round });
-/**
- * A map of default value types for common values
- */
-var defaultValueTypes = {
-    // Color props
-    color: color,
-    backgroundColor: color,
-    outlineColor: color,
-    fill: color,
-    stroke: color,
-    // Border props
-    borderColor: color,
-    borderTopColor: color,
-    borderRightColor: color,
-    borderBottomColor: color,
-    borderLeftColor: color,
-    borderWidth: px,
-    borderTopWidth: px,
-    borderRightWidth: px,
-    borderBottomWidth: px,
-    borderLeftWidth: px,
-    borderRadius: px,
-    radius: px,
-    borderTopLeftRadius: px,
-    borderTopRightRadius: px,
-    borderBottomRightRadius: px,
-    borderBottomLeftRadius: px,
-    // Positioning props
-    width: px,
-    maxWidth: px,
-    height: px,
-    maxHeight: px,
-    size: px,
-    top: px,
-    right: px,
-    bottom: px,
-    left: px,
-    // Spacing props
-    padding: px,
-    paddingTop: px,
-    paddingRight: px,
-    paddingBottom: px,
-    paddingLeft: px,
-    margin: px,
-    marginTop: px,
-    marginRight: px,
-    marginBottom: px,
-    marginLeft: px,
-    // Transform props
-    rotate: degrees,
-    rotateX: degrees,
-    rotateY: degrees,
-    rotateZ: degrees,
-    scale: scale,
-    scaleX: scale,
-    scaleY: scale,
-    scaleZ: scale,
-    skew: degrees,
-    skewX: degrees,
-    skewY: degrees,
-    distance: px,
-    translateX: px,
-    translateY: px,
-    translateZ: px,
-    x: px,
-    y: px,
-    z: px,
-    perspective: px,
-    transformPerspective: px,
-    opacity: alpha,
-    originX: progressPercentage,
-    originY: progressPercentage,
-    originZ: px,
-    // Misc
-    zIndex: int,
-    // SVG
-    fillOpacity: alpha,
-    strokeOpacity: alpha,
-    numOctaves: int,
-};
-/**
- * A list of value types commonly used for dimensions
- */
-var dimensionValueTypes = [number, px, percent, degrees, vw, vh, auto];
-/**
- * Tests a provided value against a ValueType
- */
-var testValueType = function (v) { return function (type) { return type.test(v); }; };
-/**
- * Tests a dimensional value against the list of dimension ValueTypes
- */
-var findDimensionValueType = function (v) {
-    return dimensionValueTypes.find(testValueType(v));
-};
-/**
- * A list of all ValueTypes
- */
-var valueTypes = __spread(dimensionValueTypes, [color, complex]);
-/**
- * Tests a value against the list of ValueTypes
- */
-var findValueType = function (v) { return valueTypes.find(testValueType(v)); };
-/**
- * Gets the default ValueType for the provided value key
- */
-var getDefaultValueType = function (key) { return defaultValueTypes[key]; };
-/**
- * Provided a value and a ValueType, returns the value as that value type.
- */
-var getValueAsType = function (value, type) {
-    return type && typeof value === "number"
-        ? type.transform(value)
-        : value;
-};
 
 /**
  * A list of all transformable axes. We'll use this list to generated a version
@@ -6584,7 +7369,7 @@ function getVariableValue(current, element, depth) {
     // Attempt to read this CSS variable off the element
     var resolved = window.getComputedStyle(element).getPropertyValue(token);
     if (resolved) {
-        return resolved;
+        return resolved.trim();
     }
     else if (isCSSVariable$1(fallback)) {
         // The fallback might itself be a CSS variable, in which case we attempt to resolve it too.
@@ -6997,13 +7782,8 @@ function isNear(value, target, maxDistance) {
     if (maxDistance === void 0) { maxDistance = 0.01; }
     return distance(value, target) < maxDistance;
 }
-/**
- * Calculate the translate needed to be applied to source to get target
- */
-function calcTranslate(source, target, origin) {
-    var sourcePoint = mix(source.min, source.max, origin);
-    var targetPoint = mix(target.min, target.max, origin);
-    return targetPoint - sourcePoint;
+function calcLength(axis) {
+    return axis.max - axis.min;
 }
 /**
  * Calculate a transform origin relative to the source axis, between 0-1, that results
@@ -7011,8 +7791,8 @@ function calcTranslate(source, target, origin) {
  */
 function calcOrigin(source, target) {
     var origin = 0.5;
-    var sourceLength = source.max - source.min;
-    var targetLength = target.max - target.min;
+    var sourceLength = calcLength(source);
+    var targetLength = calcLength(target);
     if (targetLength > sourceLength) {
         origin = progress(target.min, target.max - sourceLength, source.min);
     }
@@ -7028,14 +7808,13 @@ function calcOrigin(source, target) {
  * calculated based on the relative positions of the two bounding boxes.
  */
 function updateAxisDelta(delta, source, target, origin) {
-    var sourceLength = source.max - source.min;
-    var targetLength = target.max - target.min;
     delta.origin = origin === undefined ? calcOrigin(source, target) : origin;
     delta.originPoint = mix(source.min, source.max, delta.origin);
-    delta.scale = targetLength / sourceLength;
+    delta.scale = calcLength(target) / calcLength(source);
     if (isNear(delta.scale, 1, 0.0001))
         delta.scale = 1;
-    delta.translate = calcTranslate(source, target, delta.origin);
+    delta.translate =
+        mix(target.min, target.max, delta.origin) - delta.originPoint;
     if (isNear(delta.translate))
         delta.translate = 0;
 }
@@ -7063,283 +7842,6 @@ function eachAxis(handler) {
 }
 
 /**
- * Converts seconds to milliseconds
- *
- * @param seconds - Time in seconds.
- * @return milliseconds - Converted time in milliseconds.
- */
-var secondsToMilliseconds = function (seconds) { return seconds * 1000; };
-
-var easingLookup = {
-    linear: linear,
-    easeIn: easeIn,
-    easeInOut: easeInOut,
-    easeOut: easeOut,
-    circIn: circIn,
-    circInOut: circInOut,
-    circOut: circOut,
-    backIn: backIn,
-    backInOut: backInOut,
-    backOut: backOut,
-    anticipate: anticipate,
-    bounceIn: bounceIn,
-    bounceInOut: bounceInOut,
-    bounceOut: bounceOut,
-};
-var easingDefinitionToFunction = function (definition) {
-    if (Array.isArray(definition)) {
-        // If cubic bezier definition, create bezier curve
-        invariant(definition.length === 4, "Cubic bezier arrays must contain four numerical values.");
-        var _a = __read(definition, 4), x1 = _a[0], y1 = _a[1], x2 = _a[2], y2 = _a[3];
-        return cubicBezier(x1, y1, x2, y2);
-    }
-    else if (typeof definition === "string") {
-        // Else lookup from table
-        invariant(easingLookup[definition] !== undefined, "Invalid easing type '" + definition + "'");
-        return easingLookup[definition];
-    }
-    return definition;
-};
-var isEasingArray = function (ease) {
-    return Array.isArray(ease) && typeof ease[0] !== "number";
-};
-
-/**
- * Check if a value is animatable. Examples:
- *
- * ✅: 100, "100px", "#fff"
- * ❌: "block", "url(2.jpg)"
- * @param value
- *
- * @internal
- */
-var isAnimatable = function (key, value) {
-    // If the list of keys tat might be non-animatable grows, replace with Set
-    if (key === "zIndex")
-        return false;
-    // If it's a number or a keyframes array, we can animate it. We might at some point
-    // need to do a deep isAnimatable check of keyframes, or let Popmotion handle this,
-    // but for now lets leave it like this for performance reasons
-    if (typeof value === "number" || Array.isArray(value))
-        return true;
-    if (typeof value === "string" && // It's animatable if we have a string
-        complex.test(value) && // And it contains numbers and/or colors
-        !value.startsWith("url(") // Unless it starts with "url("
-    ) {
-        return true;
-    }
-    return false;
-};
-
-var isKeyframesTarget = function (v) {
-    return Array.isArray(v);
-};
-
-var underDampedSpring = function () { return ({
-    type: "spring",
-    stiffness: 500,
-    damping: 25,
-    restDelta: 0.5,
-    restSpeed: 10,
-}); };
-var overDampedSpring = function (to) { return ({
-    type: "spring",
-    stiffness: 550,
-    damping: to === 0 ? 100 : 30,
-    restDelta: 0.01,
-    restSpeed: 10,
-}); };
-var linearTween = function () { return ({
-    type: "keyframes",
-    ease: "linear",
-    duration: 0.3,
-}); };
-var keyframes$1 = function (values) { return ({
-    type: "keyframes",
-    duration: 0.8,
-    values: values,
-}); };
-var defaultTransitions = {
-    x: underDampedSpring,
-    y: underDampedSpring,
-    z: underDampedSpring,
-    rotate: underDampedSpring,
-    rotateX: underDampedSpring,
-    rotateY: underDampedSpring,
-    rotateZ: underDampedSpring,
-    scaleX: overDampedSpring,
-    scaleY: overDampedSpring,
-    scale: overDampedSpring,
-    opacity: linearTween,
-    backgroundColor: linearTween,
-    color: linearTween,
-    default: overDampedSpring,
-};
-var getDefaultTransition = function (valueKey, to) {
-    var transitionFactory;
-    if (isKeyframesTarget(to)) {
-        transitionFactory = keyframes$1;
-    }
-    else {
-        transitionFactory =
-            defaultTransitions[valueKey] || defaultTransitions.default;
-    }
-    return __assign({ to: to }, transitionFactory(to));
-};
-
-/**
- * Decide whether a transition is defined on a given Transition.
- * This filters out orchestration options and returns true
- * if any options are left.
- */
-function isTransitionDefined(_a) {
-    var when = _a.when, delay = _a.delay, delayChildren = _a.delayChildren, staggerChildren = _a.staggerChildren, staggerDirection = _a.staggerDirection, repeat = _a.repeat, repeatType = _a.repeatType, repeatDelay = _a.repeatDelay, from = _a.from, transition = __rest(_a, ["when", "delay", "delayChildren", "staggerChildren", "staggerDirection", "repeat", "repeatType", "repeatDelay", "from"]);
-    return !!Object.keys(transition).length;
-}
-/**
- * Convert Framer Motion's Transition type into Popmotion-compatible options.
- */
-function convertTransitionToAnimationOptions(_a) {
-    var yoyo = _a.yoyo, loop = _a.loop, flip = _a.flip, ease = _a.ease, times = _a.times, transition = __rest(_a, ["yoyo", "loop", "flip", "ease", "times"]);
-    var options = __assign({}, transition);
-    if (times) {
-        options.offset = times;
-    }
-    /**
-     * Convert any existing durations from seconds to milliseconds
-     */
-    if (transition.duration)
-        options["duration"] = secondsToMilliseconds(transition.duration);
-    if (transition.repeatDelay)
-        options.repeatDelay = secondsToMilliseconds(transition.repeatDelay);
-    /**
-     * Map easing names to Popmotion's easing functions
-     */
-    if (ease) {
-        options["ease"] = isEasingArray(ease)
-            ? ease.map(easingDefinitionToFunction)
-            : easingDefinitionToFunction(ease);
-    }
-    /**
-     * Support legacy transition API
-     */
-    if (transition.type === "tween")
-        options.type = "keyframes";
-    if (yoyo) {
-        options.repeatType = "reverse";
-    }
-    else if (loop) {
-        options.repeatType = "loop";
-    }
-    else if (flip) {
-        options.repeatType = "mirror";
-    }
-    options.repeat = loop || yoyo || flip || transition.repeat;
-    /**
-     * TODO: Popmotion 9 has the ability to automatically detect whether to use
-     * a keyframes or spring animation, but does so by detecting velocity and other spring options.
-     * It'd be good to introduce a similar thing here.
-     */
-    if (transition.type !== "spring")
-        options.type = "keyframes";
-    return options;
-}
-/**
- * Get the delay for a value by checking Transition with decreasing specificity.
- */
-function getDelayFromTransition(transition, key) {
-    var _a, _b, _c, _d, _e;
-    return ((_e = (_d = (_b = (_a = transition[key]) === null || _a === void 0 ? void 0 : _a.delay) !== null && _b !== void 0 ? _b : (_c = transition["default"]) === null || _c === void 0 ? void 0 : _c.delay) !== null && _d !== void 0 ? _d : transition.delay) !== null && _e !== void 0 ? _e : 0);
-}
-function hydrateKeyframes(options) {
-    if (Array.isArray(options.to) && options.to[0] === null) {
-        options.to = __spread(options.to);
-        options.to[0] = options.from;
-    }
-    return options;
-}
-function getPopmotionAnimationOptions(transition, options, key) {
-    var _a;
-    if (Array.isArray(options.to)) {
-        (_a = transition.duration) !== null && _a !== void 0 ? _a : (transition.duration = 0.8);
-    }
-    hydrateKeyframes(options);
-    /**
-     * Get a default transition if none is determined to be defined.
-     */
-    if (!isTransitionDefined(transition)) {
-        transition = __assign(__assign({}, transition), getDefaultTransition(key, options.to));
-    }
-    return __assign(__assign({}, options), convertTransitionToAnimationOptions(transition));
-}
-/**
- *
- */
-function getAnimation(key, value, target, transition, onComplete) {
-    var valueTransition = transition[key] || transition["default"] || transition;
-    var origin = value.get();
-    var isTargetAnimatable = isAnimatable(key, target);
-    /**
-     * If we're trying to animate from "none", try and get an animatable version
-     * of the target. This could be improved to work both ways.
-     */
-    if (origin === "none" && isTargetAnimatable && typeof target === "string") {
-        origin = complex.getAnimatableNone(target);
-    }
-    var isOriginAnimatable = isAnimatable(key, origin);
-    warning(isOriginAnimatable === isTargetAnimatable, "You are trying to animate " + key + " from \"" + origin + "\" to \"" + target + "\". " + origin + " is not an animatable value - to enable this animation set " + origin + " to a value animatable to " + target + " via the `style` property.");
-    function start() {
-        var options = {
-            from: origin,
-            to: target,
-            velocity: value.getVelocity(),
-            onComplete: onComplete,
-            onUpdate: function (v) { return value.set(v); },
-        };
-        return valueTransition.type === "inertia" ||
-            valueTransition.type === "decay"
-            ? inertia(__assign(__assign({}, options), valueTransition))
-            : animate(getPopmotionAnimationOptions(valueTransition, options, key));
-    }
-    function set() {
-        value.set(target);
-        onComplete();
-        return { stop: function () { } };
-    }
-    return !isOriginAnimatable ||
-        !isTargetAnimatable ||
-        valueTransition.type === false
-        ? set
-        : start;
-}
-/**
- * Start animation on a MotionValue. This function is an interface between
- * Framer Motion and Popmotion
- *
- * @internal
- */
-function startAnimation(key, value, target, transition) {
-    if (transition === void 0) { transition = {}; }
-    return value.start(function (onComplete) {
-        var delayTimer;
-        var controls;
-        var animation = getAnimation(key, value, target, transition, onComplete);
-        var delay = getDelayFromTransition(transition, key);
-        var start = function () { return (controls = animation()); };
-        if (delay) {
-            delayTimer = setTimeout(start, secondsToMilliseconds(delay));
-        }
-        else {
-            start();
-        }
-        return function () {
-            clearTimeout(delayTimer);
-            controls === null || controls === void 0 ? void 0 : controls.stop();
-        };
-    });
-}
-
-/**
  * Measure and return the element bounding box.
  *
  * We convert the box into an AxisBox2D to make it easier to work with each axis
@@ -7352,6 +7854,251 @@ function getBoundingBox(element, transformPagePoint) {
     var box = element.getBoundingClientRect();
     return convertBoundingBoxToAxisBox(transformBoundingBox(box, transformPagePoint));
 }
+
+var positionalKeys = new Set([
+    "width",
+    "height",
+    "top",
+    "left",
+    "right",
+    "bottom",
+    "x",
+    "y",
+]);
+var isPositionalKey = function (key) { return positionalKeys.has(key); };
+var hasPositionalKey = function (target) {
+    return Object.keys(target).some(isPositionalKey);
+};
+var setAndResetVelocity = function (value, to) {
+    // Looks odd but setting it twice doesn't render, it'll just
+    // set both prev and current to the latest value
+    value.set(to, false);
+    value.set(to);
+};
+var isNumOrPxType = function (v) {
+    return v === number || v === px;
+};
+var BoundingBoxDimension;
+(function (BoundingBoxDimension) {
+    BoundingBoxDimension["width"] = "width";
+    BoundingBoxDimension["height"] = "height";
+    BoundingBoxDimension["left"] = "left";
+    BoundingBoxDimension["right"] = "right";
+    BoundingBoxDimension["top"] = "top";
+    BoundingBoxDimension["bottom"] = "bottom";
+})(BoundingBoxDimension || (BoundingBoxDimension = {}));
+var getPosFromMatrix = function (matrix, pos) {
+    return parseFloat(matrix.split(", ")[pos]);
+};
+var getTranslateFromMatrix = function (pos2, pos3) { return function (_bbox, _a) {
+    var transform = _a.transform;
+    if (transform === "none" || !transform)
+        return 0;
+    var matrix3d = transform.match(/^matrix3d\((.+)\)$/);
+    if (matrix3d) {
+        return getPosFromMatrix(matrix3d[1], pos3);
+    }
+    else {
+        var matrix = transform.match(/^matrix\((.+)\)$/);
+        if (matrix) {
+            return getPosFromMatrix(matrix[1], pos2);
+        }
+        else {
+            return 0;
+        }
+    }
+}; };
+var transformKeys = new Set(["x", "y", "z"]);
+var nonTranslationalTransformKeys = transformProps.filter(function (key) { return !transformKeys.has(key); });
+function removeNonTranslationalTransform(visualElement) {
+    var removedTransforms = [];
+    nonTranslationalTransformKeys.forEach(function (key) {
+        var value = visualElement.getValue(key);
+        if (value !== undefined) {
+            removedTransforms.push([key, value.get()]);
+            value.set(key.startsWith("scale") ? 1 : 0);
+        }
+    });
+    // Apply changes to element before measurement
+    if (removedTransforms.length)
+        visualElement.render();
+    return removedTransforms;
+}
+var positionalValues = {
+    // Dimensions
+    width: function (_a) {
+        var x = _a.x;
+        return x.max - x.min;
+    },
+    height: function (_a) {
+        var y = _a.y;
+        return y.max - y.min;
+    },
+    top: function (_bbox, _a) {
+        var top = _a.top;
+        return parseFloat(top);
+    },
+    left: function (_bbox, _a) {
+        var left = _a.left;
+        return parseFloat(left);
+    },
+    bottom: function (_a, _b) {
+        var y = _a.y;
+        var top = _b.top;
+        return parseFloat(top) + (y.max - y.min);
+    },
+    right: function (_a, _b) {
+        var x = _a.x;
+        var left = _b.left;
+        return parseFloat(left) + (x.max - x.min);
+    },
+    // Transform
+    x: getTranslateFromMatrix(4, 13),
+    y: getTranslateFromMatrix(5, 14),
+};
+var convertChangedValueTypes = function (target, visualElement, changedKeys) {
+    var originBbox = visualElement.getBoundingBox();
+    var elementComputedStyle = visualElement.getComputedStyle();
+    var display = elementComputedStyle.display, top = elementComputedStyle.top, left = elementComputedStyle.left, bottom = elementComputedStyle.bottom, right = elementComputedStyle.right, transform = elementComputedStyle.transform;
+    var originComputedStyle = { top: top, left: left, bottom: bottom, right: right, transform: transform };
+    // If the element is currently set to display: "none", make it visible before
+    // measuring the target bounding box
+    if (display === "none") {
+        visualElement.setStaticValues("display", target.display || "block");
+    }
+    // Apply the latest values (as set in checkAndConvertChangedValueTypes)
+    visualElement.render();
+    var targetBbox = visualElement.getBoundingBox();
+    changedKeys.forEach(function (key) {
+        // Restore styles to their **calculated computed style**, not their actual
+        // originally set style. This allows us to animate between equivalent pixel units.
+        var value = visualElement.getValue(key);
+        setAndResetVelocity(value, positionalValues[key](originBbox, originComputedStyle));
+        target[key] = positionalValues[key](targetBbox, elementComputedStyle);
+    });
+    return target;
+};
+var checkAndConvertChangedValueTypes = function (visualElement, target, origin, transitionEnd) {
+    if (origin === void 0) { origin = {}; }
+    if (transitionEnd === void 0) { transitionEnd = {}; }
+    target = __assign({}, target);
+    transitionEnd = __assign({}, transitionEnd);
+    var targetPositionalKeys = Object.keys(target).filter(isPositionalKey);
+    // We want to remove any transform values that could affect the element's bounding box before
+    // it's measured. We'll reapply these later.
+    var removedTransformValues = [];
+    var hasAttemptedToRemoveTransformValues = false;
+    var changedValueTypeKeys = [];
+    targetPositionalKeys.forEach(function (key) {
+        var value = visualElement.getValue(key);
+        if (!visualElement.hasValue(key))
+            return;
+        var from = origin[key];
+        var to = target[key];
+        var fromType = findDimensionValueType(from);
+        var toType;
+        // TODO: The current implementation of this basically throws an error
+        // if you try and do value conversion via keyframes. There's probably
+        // a way of doing this but the performance implications would need greater scrutiny,
+        // as it'd be doing multiple resize-remeasure operations.
+        if (isKeyframesTarget(to)) {
+            var numKeyframes = to.length;
+            for (var i = to[0] === null ? 1 : 0; i < numKeyframes; i++) {
+                if (!toType) {
+                    toType = findDimensionValueType(to[i]);
+                    invariant(toType === fromType ||
+                        (isNumOrPxType(fromType) && isNumOrPxType(toType)), "Keyframes must be of the same dimension as the current value");
+                }
+                else {
+                    invariant(findDimensionValueType(to[i]) === toType, "All keyframes must be of the same type");
+                }
+            }
+        }
+        else {
+            toType = findDimensionValueType(to);
+        }
+        if (fromType !== toType) {
+            // If they're both just number or px, convert them both to numbers rather than
+            // relying on resize/remeasure to convert (which is wasteful in this situation)
+            if (isNumOrPxType(fromType) && isNumOrPxType(toType)) {
+                var current = value.get();
+                if (typeof current === "string") {
+                    value.set(parseFloat(current));
+                }
+                if (typeof to === "string") {
+                    target[key] = parseFloat(to);
+                }
+                else if (Array.isArray(to) && toType === px) {
+                    target[key] = to.map(parseFloat);
+                }
+            }
+            else if ((fromType === null || fromType === void 0 ? void 0 : fromType.transform) && (toType === null || toType === void 0 ? void 0 : toType.transform) &&
+                (from === 0 || to === 0)) {
+                // If one or the other value is 0, it's safe to coerce it to the
+                // type of the other without measurement
+                if (from === 0) {
+                    value.set(toType.transform(from));
+                }
+                else {
+                    target[key] = fromType.transform(to);
+                }
+            }
+            else {
+                // If we're going to do value conversion via DOM measurements, we first
+                // need to remove non-positional transform values that could affect the bbox measurements.
+                if (!hasAttemptedToRemoveTransformValues) {
+                    removedTransformValues = removeNonTranslationalTransform(visualElement);
+                    hasAttemptedToRemoveTransformValues = true;
+                }
+                changedValueTypeKeys.push(key);
+                transitionEnd[key] =
+                    transitionEnd[key] !== undefined
+                        ? transitionEnd[key]
+                        : target[key];
+                setAndResetVelocity(value, to);
+            }
+        }
+    });
+    if (changedValueTypeKeys.length) {
+        var convertedTarget = convertChangedValueTypes(target, visualElement, changedValueTypeKeys);
+        // If we removed transform values, reapply them before the next render
+        if (removedTransformValues.length) {
+            removedTransformValues.forEach(function (_a) {
+                var _b = __read(_a, 2), key = _b[0], value = _b[1];
+                visualElement.getValue(key).set(value);
+            });
+        }
+        // Reapply original values
+        visualElement.render();
+        return { target: convertedTarget, transitionEnd: transitionEnd };
+    }
+    else {
+        return { target: target, transitionEnd: transitionEnd };
+    }
+};
+/**
+ * Convert value types for x/y/width/height/top/left/bottom/right
+ *
+ * Allows animation between `'auto'` -> `'100%'` or `0` -> `'calc(50% - 10vw)'`
+ *
+ * @internal
+ */
+function unitConversion(visualElement, target, origin, transitionEnd) {
+    return hasPositionalKey(target)
+        ? checkAndConvertChangedValueTypes(visualElement, target, origin, transitionEnd)
+        : { target: target, transitionEnd: transitionEnd };
+}
+
+/**
+ * Parse a DOM variant to make it animatable. This involves resolving CSS variables
+ * and ensuring animations like "20%" => "calc(50vw)" are performed in pixels.
+ */
+var parseDomVariant = function (visualElement, target, origin, transitionEnd) {
+    var resolved = resolveCSSVariables(visualElement, target, transitionEnd);
+    target = resolved.target;
+    transitionEnd = resolved.transitionEnd;
+    return unitConversion(visualElement, target, origin, transitionEnd);
+};
 
 /**
  * A VisualElement for HTMLElements
@@ -7532,6 +8279,35 @@ var HTMLVisualElement = /** @class */ (function (_super) {
             return this.read(key);
         }
     };
+    /**
+     * Ensure that HTML and Framer-specific value types like `px`->`%` and `Color`
+     * can be animated by Motion.
+     */
+    HTMLVisualElement.prototype.makeTargetAnimatable = function (_a, parseDOMValues) {
+        if (parseDOMValues === void 0) { parseDOMValues = true; }
+        var transition = _a.transition, transitionEnd = _a.transitionEnd, target = __rest(_a, ["transition", "transitionEnd"]);
+        var transformValues = this.config.transformValues;
+        var origin = getOrigin(target, transition || {}, this);
+        /**
+         * If Framer has provided a function to convert `Color` etc value types, convert them
+         */
+        if (transformValues) {
+            if (transitionEnd)
+                transitionEnd = transformValues(transitionEnd);
+            if (target)
+                target = transformValues(target);
+            if (origin)
+                origin = transformValues(origin);
+        }
+        if (parseDOMValues) {
+            checkTargetForNewValues(this, target, origin);
+            var parsed = parseDomVariant(this, target, origin, transitionEnd);
+            transitionEnd = parsed.transitionEnd;
+            target = parsed.target;
+        }
+        return __assign({ transition: transition,
+            transitionEnd: transitionEnd }, target);
+    };
     HTMLVisualElement.prototype.enableLayoutProjection = function () {
         this.isLayoutProjectionEnabled = true;
     };
@@ -7660,14 +8436,15 @@ var HTMLVisualElement = /** @class */ (function (_super) {
      */
     HTMLVisualElement.prototype.startLayoutAxisAnimation = function (axis, transition) {
         var _this = this;
+        var _a;
         var progress = this.axisProgress[axis];
-        var _a = this.targetBox[axis], min = _a.min, max = _a.max;
+        var _b = this.targetBox[axis], min = _b.min, max = _b.max;
         var length = max - min;
         progress.clearListeners();
         progress.set(min);
         progress.set(min); // Set twice to hard-reset velocity
         progress.onChange(function (v) { return _this.setAxisTarget(axis, v, v + length); });
-        return startAnimation(axis, progress, 0, transition);
+        return (_a = this.animateMotionValue) === null || _a === void 0 ? void 0 : _a.call(this, axis, progress, 0, transition);
     };
     HTMLVisualElement.prototype.stopLayoutAnimation = function () {
         var _this = this;
@@ -8080,76 +8857,23 @@ function isSVGComponent(Component) {
  */
 var PresenceContext = React.createContext(null);
 
-/**
- * When a component is the child of `AnimatePresence`, it can use `usePresence`
- * to access information about whether it's still present in the React tree.
- *
- * ```jsx
- * import { usePresence } from "framer-motion"
- *
- * export const Component = () => {
- *   const [isPresent, safeToRemove] = usePresence()
- *
- *   useEffect(() => {
- *     !isPresent && setTimeout(safeToRemove, 1000)
- *   }, [isPresent])
- *
- *   return <div />
- * }
- * ```
- *
- * If `isPresent` is `false`, it means that a component has been removed the tree, but
- * `AnimatePresence` won't really remove it until `safeToRemove` has been called.
- *
- * @public
- */
-function usePresence() {
-    var context = React.useContext(PresenceContext);
-    if (context === null)
-        return [true, null];
-    var isPresent = context.isPresent, onExitComplete = context.onExitComplete, register = context.register;
-    // It's safe to call the following hooks conditionally (after an early return) because the context will always
-    // either be null or non-null for the lifespan of the component.
-    // Replace with useOpaqueId when released in React
-    var id = useUniqueId();
-    React.useEffect(function () { return register(id); }, []);
-    var safeToRemove = function () { return onExitComplete === null || onExitComplete === void 0 ? void 0 : onExitComplete(id); };
-    return !isPresent && onExitComplete ? [false, safeToRemove] : [true];
+var MotionContext = React.createContext({
+    variantContext: {},
+});
+function useVariantContext() {
+    return React.useContext(MotionContext).variantContext;
 }
-/**
- * Similar to `usePresence`, except `useIsPresent` simply returns whether or not the component is present.
- * There is no `safeToRemove` function.
- *
- * ```jsx
- * import { useIsPresent } from "framer-motion"
- *
- * export const Component = () => {
- *   const isPresent = useIsPresent()
- *
- *   useEffect(() => {
- *     !isPresent && console.log("I've been removed!")
- *   }, [isPresent])
- *
- *   return <div />
- * }
- * ```
- *
- * @public
- */
-function useIsPresent() {
-    var context = React.useContext(PresenceContext);
-    return context === null ? true : context.isPresent;
+function useVisualElementContext() {
+    return React.useContext(MotionContext).visualElement;
 }
-var counter$1 = 0;
-var incrementId = function () { return counter$1++; };
-var useUniqueId = function () { return useConstant(incrementId); };
 
 /**
  * DOM-flavoured variation of the useVisualElement hook. Used to create either a HTMLVisualElement
  * or SVGVisualElement for the component.
  *
  */
-var useDomVisualElement = function (Component, props, parent, isStatic, ref) {
+var useDomVisualElement = function (Component, props, isStatic, ref) {
+    var parent = useVisualElementContext();
     var visualElement = useConstant(function () {
         var DOMVisualElement = isSVGComponent(Component)
             ? SVGVisualElement
@@ -8158,9 +8882,21 @@ var useDomVisualElement = function (Component, props, parent, isStatic, ref) {
     });
     visualElement.updateConfig(__assign(__assign(__assign({}, visualElement.config), { enableHardwareAcceleration: !isStatic }), props));
     visualElement.layoutId = props.layoutId;
-    var isPresent = useIsPresent();
+    var presenceContext = React.useContext(PresenceContext);
+    /**
+     * Update VisualElement with presence data.
+     */
+    var isPresent = presenceContext === null ? true : presenceContext.isPresent;
     visualElement.isPresent =
         props.isPresent !== undefined ? props.isPresent : isPresent;
+    /**
+     *
+     */
+    var presenceId = presenceContext === null || presenceContext === void 0 ? void 0 : presenceContext.id;
+    visualElement.isPresenceRoot = !parent || parent.presenceId !== presenceId;
+    /**
+     * TODO: Investigate if we need this
+     */
     React.useEffect(function () {
         if (props.onViewportBoxUpdate) {
             return visualElement.onViewportBoxUpdate(props.onViewportBoxUpdate);
@@ -8186,7 +8922,6 @@ var validMotionProps = new Set([
     "transformValues",
     "custom",
     "inherit",
-    "static",
     "layout",
     "layoutId",
     "onLayoutAnimationComplete",
@@ -8280,10 +9015,13 @@ function buildHTMLProps(visualElement, _a) {
         style: __assign(__assign(__assign({}, visualElement.reactStyle), visualElement.style), visualElement.vars),
     };
     if (!!drag) {
-        // Disable text selection
-        htmlProps.style.userSelect = "none";
         // Disable the ghost element when a user drags
         htmlProps.draggable = false;
+        // Disable text selection
+        htmlProps.style.userSelect = "none";
+        // Disable scrolling on the draggable direction
+        htmlProps.style.touchAction =
+            drag === true ? "none" : "pan-" + (drag === "x" ? "y" : "x");
     }
     return htmlProps;
 }
@@ -8313,550 +9051,6 @@ function render(Component, props, visualElement) {
         : buildHTMLProps(visualElement, props);
     return React.createElement(Component, __assign(__assign(__assign({}, forwardedProps), { ref: visualElement.ref }), visualProps));
 }
-
-var positionalKeys = new Set([
-    "width",
-    "height",
-    "top",
-    "left",
-    "right",
-    "bottom",
-    "x",
-    "y",
-]);
-var isPositionalKey = function (key) { return positionalKeys.has(key); };
-var hasPositionalKey = function (target) {
-    return Object.keys(target).some(isPositionalKey);
-};
-var setAndResetVelocity = function (value, to) {
-    // Looks odd but setting it twice doesn't render, it'll just
-    // set both prev and current to the latest value
-    value.set(to, false);
-    value.set(to);
-};
-var isNumOrPxType = function (v) {
-    return v === number || v === px;
-};
-var BoundingBoxDimension;
-(function (BoundingBoxDimension) {
-    BoundingBoxDimension["width"] = "width";
-    BoundingBoxDimension["height"] = "height";
-    BoundingBoxDimension["left"] = "left";
-    BoundingBoxDimension["right"] = "right";
-    BoundingBoxDimension["top"] = "top";
-    BoundingBoxDimension["bottom"] = "bottom";
-})(BoundingBoxDimension || (BoundingBoxDimension = {}));
-var getPosFromMatrix = function (matrix, pos) {
-    return parseFloat(matrix.split(", ")[pos]);
-};
-var getTranslateFromMatrix = function (pos2, pos3) { return function (_bbox, _a) {
-    var transform = _a.transform;
-    if (transform === "none" || !transform)
-        return 0;
-    var matrix3d = transform.match(/^matrix3d\((.+)\)$/);
-    if (matrix3d) {
-        return getPosFromMatrix(matrix3d[1], pos3);
-    }
-    else {
-        var matrix = transform.match(/^matrix\((.+)\)$/);
-        if (matrix) {
-            return getPosFromMatrix(matrix[1], pos2);
-        }
-        else {
-            return 0;
-        }
-    }
-}; };
-var transformKeys = new Set(["x", "y", "z"]);
-var nonTranslationalTransformKeys = transformProps.filter(function (key) { return !transformKeys.has(key); });
-function removeNonTranslationalTransform(visualElement) {
-    var removedTransforms = [];
-    nonTranslationalTransformKeys.forEach(function (key) {
-        var value = visualElement.getValue(key);
-        if (value !== undefined) {
-            removedTransforms.push([key, value.get()]);
-            value.set(key.startsWith("scale") ? 1 : 0);
-        }
-    });
-    // Apply changes to element before measurement
-    if (removedTransforms.length)
-        visualElement.render();
-    return removedTransforms;
-}
-var positionalValues = {
-    // Dimensions
-    width: function (_a) {
-        var x = _a.x;
-        return x.max - x.min;
-    },
-    height: function (_a) {
-        var y = _a.y;
-        return y.max - y.min;
-    },
-    top: function (_bbox, _a) {
-        var top = _a.top;
-        return parseFloat(top);
-    },
-    left: function (_bbox, _a) {
-        var left = _a.left;
-        return parseFloat(left);
-    },
-    bottom: function (_a, _b) {
-        var y = _a.y;
-        var top = _b.top;
-        return parseFloat(top) + (y.max - y.min);
-    },
-    right: function (_a, _b) {
-        var x = _a.x;
-        var left = _b.left;
-        return parseFloat(left) + (x.max - x.min);
-    },
-    // Transform
-    x: getTranslateFromMatrix(4, 13),
-    y: getTranslateFromMatrix(5, 14),
-};
-var convertChangedValueTypes = function (target, visualElement, changedKeys) {
-    var originBbox = visualElement.getBoundingBox();
-    var elementComputedStyle = visualElement.getComputedStyle();
-    var display = elementComputedStyle.display, top = elementComputedStyle.top, left = elementComputedStyle.left, bottom = elementComputedStyle.bottom, right = elementComputedStyle.right, transform = elementComputedStyle.transform;
-    var originComputedStyle = { top: top, left: left, bottom: bottom, right: right, transform: transform };
-    // If the element is currently set to display: "none", make it visible before
-    // measuring the target bounding box
-    if (display === "none") {
-        visualElement.setStaticValues("display", target.display || "block");
-    }
-    // Apply the latest values (as set in checkAndConvertChangedValueTypes)
-    visualElement.render();
-    var targetBbox = visualElement.getBoundingBox();
-    changedKeys.forEach(function (key) {
-        // Restore styles to their **calculated computed style**, not their actual
-        // originally set style. This allows us to animate between equivalent pixel units.
-        var value = visualElement.getValue(key);
-        setAndResetVelocity(value, positionalValues[key](originBbox, originComputedStyle));
-        target[key] = positionalValues[key](targetBbox, elementComputedStyle);
-    });
-    return target;
-};
-var checkAndConvertChangedValueTypes = function (visualElement, target, origin, transitionEnd) {
-    if (origin === void 0) { origin = {}; }
-    if (transitionEnd === void 0) { transitionEnd = {}; }
-    target = __assign({}, target);
-    transitionEnd = __assign({}, transitionEnd);
-    var targetPositionalKeys = Object.keys(target).filter(isPositionalKey);
-    // We want to remove any transform values that could affect the element's bounding box before
-    // it's measured. We'll reapply these later.
-    var removedTransformValues = [];
-    var hasAttemptedToRemoveTransformValues = false;
-    var changedValueTypeKeys = [];
-    targetPositionalKeys.forEach(function (key) {
-        var value = visualElement.getValue(key);
-        if (!visualElement.hasValue(key))
-            return;
-        var from = origin[key];
-        var to = target[key];
-        var fromType = findDimensionValueType(from);
-        var toType;
-        // TODO: The current implementation of this basically throws an error
-        // if you try and do value conversion via keyframes. There's probably
-        // a way of doing this but the performance implications would need greater scrutiny,
-        // as it'd be doing multiple resize-remeasure operations.
-        if (isKeyframesTarget(to)) {
-            var numKeyframes = to.length;
-            for (var i = to[0] === null ? 1 : 0; i < numKeyframes; i++) {
-                if (!toType) {
-                    toType = findDimensionValueType(to[i]);
-                    invariant(toType === fromType ||
-                        (isNumOrPxType(fromType) && isNumOrPxType(toType)), "Keyframes must be of the same dimension as the current value");
-                }
-                else {
-                    invariant(findDimensionValueType(to[i]) === toType, "All keyframes must be of the same type");
-                }
-            }
-        }
-        else {
-            toType = findDimensionValueType(to);
-        }
-        if (fromType !== toType) {
-            // If they're both just number or px, convert them both to numbers rather than
-            // relying on resize/remeasure to convert (which is wasteful in this situation)
-            if (isNumOrPxType(fromType) && isNumOrPxType(toType)) {
-                var current = value.get();
-                if (typeof current === "string") {
-                    value.set(parseFloat(current));
-                }
-                if (typeof to === "string") {
-                    target[key] = parseFloat(to);
-                }
-                else if (Array.isArray(to) && toType === px) {
-                    target[key] = to.map(parseFloat);
-                }
-            }
-            else if ((fromType === null || fromType === void 0 ? void 0 : fromType.transform) && (toType === null || toType === void 0 ? void 0 : toType.transform) &&
-                (from === 0 || to === 0)) {
-                // If one or the other value is 0, it's safe to coerce it to the
-                // type of the other without measurement
-                if (from === 0) {
-                    value.set(toType.transform(from));
-                }
-                else {
-                    target[key] = fromType.transform(to);
-                }
-            }
-            else {
-                // If we're going to do value conversion via DOM measurements, we first
-                // need to remove non-positional transform values that could affect the bbox measurements.
-                if (!hasAttemptedToRemoveTransformValues) {
-                    removedTransformValues = removeNonTranslationalTransform(visualElement);
-                    hasAttemptedToRemoveTransformValues = true;
-                }
-                changedValueTypeKeys.push(key);
-                transitionEnd[key] =
-                    transitionEnd[key] !== undefined
-                        ? transitionEnd[key]
-                        : target[key];
-                setAndResetVelocity(value, to);
-            }
-        }
-    });
-    if (changedValueTypeKeys.length) {
-        var convertedTarget = convertChangedValueTypes(target, visualElement, changedValueTypeKeys);
-        // If we removed transform values, reapply them before the next render
-        if (removedTransformValues.length) {
-            removedTransformValues.forEach(function (_a) {
-                var _b = __read(_a, 2), key = _b[0], value = _b[1];
-                visualElement.getValue(key).set(value);
-            });
-        }
-        // Reapply original values
-        visualElement.render();
-        return { target: convertedTarget, transitionEnd: transitionEnd };
-    }
-    else {
-        return { target: target, transitionEnd: transitionEnd };
-    }
-};
-/**
- * Convert value types for x/y/width/height/top/left/bottom/right
- *
- * Allows animation between `'auto'` -> `'100%'` or `0` -> `'calc(50% - 10vw)'`
- *
- * @internal
- */
-function unitConversion(visualElement, target, origin, transitionEnd) {
-    return hasPositionalKey(target)
-        ? checkAndConvertChangedValueTypes(visualElement, target, origin, transitionEnd)
-        : { target: target, transitionEnd: transitionEnd };
-}
-
-/**
- * Parse a DOM variant to make it animatable. This involves resolving CSS variables
- * and ensuring animations like "20%" => "calc(50vw)" are performed in pixels.
- */
-var parseDomVariant = function (visualElement, target, origin, transitionEnd) {
-    var resolved = resolveCSSVariables(visualElement, target, transitionEnd);
-    target = resolved.target;
-    transitionEnd = resolved.transitionEnd;
-    return unitConversion(visualElement, target, origin, transitionEnd);
-};
-
-/**
- * Use callback either only on the initial render or on all renders. In concurrent mode
- * the "initial" render might run multiple times
- *
- * @param callback - Callback to run
- * @param isInitialOnly - Set to `true` to only run on initial render, or `false` for all renders. Defaults to `false`.
- *
- * @public
- */
-function useInitialOrEveryRender(callback, isInitialOnly) {
-    if (isInitialOnly === void 0) { isInitialOnly = false; }
-    var isInitialRender = React.useRef(true);
-    if (!isInitialOnly || (isInitialOnly && isInitialRender.current)) {
-        callback();
-    }
-    isInitialRender.current = false;
-}
-
-/**
- * Control animations on one or more components.
- *
- * @public
- */
-var AnimationControls = /** @class */ (function () {
-    function AnimationControls() {
-        /**
-         * Track whether the host component has mounted.
-         *
-         * @internal
-         */
-        this.hasMounted = false;
-        /**
-         * Pending animations that are started before a component is mounted.
-         *
-         * @internal
-         */
-        this.pendingAnimations = [];
-        /**
-         * A collection of linked component animation controls.
-         *
-         * @internal
-         */
-        this.componentControls = new Set();
-    }
-    /**
-     * Set variants on this and all child components.
-     *
-     * @param variants - The variants to set
-     *
-     * @internal
-     */
-    AnimationControls.prototype.setVariants = function (variants) {
-        this.variants = variants;
-        this.componentControls.forEach(function (controls) {
-            return controls.setVariants(variants);
-        });
-    };
-    /**
-     * Set a default transition on this and all child components
-     *
-     * @param transition - The default transition to set
-     *
-     * @internal
-     */
-    AnimationControls.prototype.setDefaultTransition = function (transition) {
-        this.defaultTransition = transition;
-        this.componentControls.forEach(function (controls) {
-            return controls.setDefaultTransition(transition);
-        });
-    };
-    /**
-     * Subscribes a component's animation controls to this.
-     *
-     * @param controls - The controls to subscribe
-     * @returns An unsubscribe function.
-     *
-     * @internal
-     */
-    AnimationControls.prototype.subscribe = function (controls) {
-        var _this = this;
-        this.componentControls.add(controls);
-        if (this.variants)
-            controls.setVariants(this.variants);
-        if (this.defaultTransition)
-            controls.setDefaultTransition(this.defaultTransition);
-        return function () { return _this.componentControls.delete(controls); };
-    };
-    /**
-     * Starts an animation on all linked components.
-     *
-     * @remarks
-     *
-     * ```jsx
-     * controls.start("variantLabel")
-     * controls.start({
-     *   x: 0,
-     *   transition: { duration: 1 }
-     * })
-     * ```
-     *
-     * @param definition - Properties or variant label to animate to
-     * @param transition - Optional `transtion` to apply to a variant
-     * @returns - A `Promise` that resolves when all animations have completed.
-     *
-     * @public
-     */
-    AnimationControls.prototype.start = function (definition, transitionOverride) {
-        var _this = this;
-        if (this.hasMounted) {
-            var animations_1 = [];
-            this.componentControls.forEach(function (controls) {
-                var animation = controls.start(definition, {
-                    transitionOverride: transitionOverride,
-                });
-                animations_1.push(animation);
-            });
-            return Promise.all(animations_1);
-        }
-        else {
-            return new Promise(function (resolve) {
-                _this.pendingAnimations.push({
-                    animation: [definition, transitionOverride],
-                    resolve: resolve,
-                });
-            });
-        }
-    };
-    /**
-     * Instantly set to a set of properties or a variant.
-     *
-     * ```jsx
-     * // With properties
-     * controls.set({ opacity: 0 })
-     *
-     * // With variants
-     * controls.set("hidden")
-     * ```
-     *
-     * @internalremarks
-     * We could perform a similar trick to `.start` where this can be called before mount
-     * and we maintain a list of of pending actions that get applied on mount. But the
-     * expectation of `set` is that it happens synchronously and this would be difficult
-     * to do before any children have even attached themselves. It's also poor practise
-     * and we should discourage render-synchronous `.start` calls rather than lean into this.
-     *
-     * @public
-     */
-    AnimationControls.prototype.set = function (definition) {
-        invariant(this.hasMounted, "controls.set() should only be called after a component has mounted. Consider calling within a useEffect hook.");
-        return this.componentControls.forEach(function (controls) {
-            return controls.apply(definition);
-        });
-    };
-    /**
-     * Stops animations on all linked components.
-     *
-     * ```jsx
-     * controls.stop()
-     * ```
-     *
-     * @public
-     */
-    AnimationControls.prototype.stop = function () {
-        this.componentControls.forEach(function (controls) { return controls.stop(); });
-    };
-    /**
-     * Initialises the animation controls.
-     *
-     * @internal
-     */
-    AnimationControls.prototype.mount = function () {
-        var _this = this;
-        this.hasMounted = true;
-        this.pendingAnimations.forEach(function (_a) {
-            var animation = _a.animation, resolve = _a.resolve;
-            return _this.start.apply(_this, __spread(animation)).then(resolve);
-        });
-    };
-    /**
-     * Stops all child animations when the host component unmounts.
-     *
-     * @internal
-     */
-    AnimationControls.prototype.unmount = function () {
-        this.hasMounted = false;
-        this.stop();
-    };
-    return AnimationControls;
-}());
-
-/**
- * @internal
- */
-var MotionContext = React.createContext({
-    static: false,
-});
-var isVariantLabel = function (v) {
-    return typeof v === "string" || Array.isArray(v);
-};
-var isAnimationControls = function (v) {
-    return v instanceof AnimationControls;
-};
-/**
- * Set up the context for children motion components.
- *
- * We also use this opportunity to apply `initial` values
- */
-var useMotionContext = function (parentContext, controls, visualElement, isStatic, _a) {
-    if (isStatic === void 0) { isStatic = false; }
-    var initial = _a.initial, animate = _a.animate, variants = _a.variants, whileTap = _a.whileTap, whileHover = _a.whileHover, layoutId = _a.layoutId;
-    // Determine whether this is a root element of an AnimatePresence component
-    var presenceContext = React.useContext(PresenceContext);
-    var presenceId = presenceContext === null || presenceContext === void 0 ? void 0 : presenceContext.id;
-    visualElement.isPresenceRoot = parentContext.presenceId !== presenceId;
-    // Override initial with that from a parent context, if defined
-    if ((presenceContext === null || presenceContext === void 0 ? void 0 : presenceContext.initial) !== undefined) {
-        initial = presenceContext.initial;
-    }
-    var initialState;
-    if (initial === false && !isAnimationControls(animate)) {
-        initialState = animate;
-    }
-    else if (typeof initial !== "boolean") {
-        initialState = initial;
-    }
-    // Track mounted status so children can detect whether they were present during their
-    // parent's first render
-    var hasMounted = React.useRef(false);
-    // We propagate this component's VisualElementAnimationControls *if* we're being provided variants,
-    // if we're being used to control variants, or if we're being passed animation controls.
-    // Otherwise this component should be "invisible" to variant propagation. This is a slight concession
-    // to Framer X where every `Frame` is a `motion` component and it might be if we change that in the future
-    // that this restriction is removed.
-    var shouldPropagateControls = variants ||
-        isVariantLabel(animate) ||
-        isVariantLabel(whileTap) ||
-        isVariantLabel(whileHover) ||
-        isAnimationControls(animate);
-    // If this component's `initial` prop is a variant label, propagate it. Otherwise pass the parent's.
-    var targetInitial = isVariantLabel(initialState)
-        ? initialState
-        : parentContext.initial;
-    // If this is a variant tree we need to propagate the `animate` prop in case new children are added after
-    // the tree initially animates.
-    var targetAnimate = isVariantLabel(animate)
-        ? animate
-        : parentContext.animate;
-    // Only allow `initial` to trigger context re-renders if this is a `static` component (ie we're on the Framer canvas)
-    // or in another non-animation/interaction environment.
-    var initialDependency = isStatic ? targetInitial : null;
-    // Only allow `animate` to trigger context re-renders if it's a variant label. If this is an array of
-    // variant labels there's probably an optimisation to deep-compare but it might be an over-optimisation.
-    // We want to do this as we rely on React's component rendering order each render cycle to determine
-    // the new order of any child components for the `staggerChildren` functionality.
-    var animateDependency = shouldPropagateControls && isVariantLabel(targetAnimate)
-        ? targetAnimate
-        : null;
-    // The context to provide to the child. We `useMemo` because although `controls` and `initial` are
-    // unlikely to change, by making the context an object it'll be considered a new value every render.
-    // So all child motion components will re-render as a result.
-    var context = React.useMemo(function () { return ({
-        controls: shouldPropagateControls
-            ? controls
-            : parentContext.controls,
-        initial: targetInitial,
-        animate: targetAnimate,
-        visualElement: visualElement,
-        hasMounted: hasMounted,
-        isReducedMotion: parentContext.isReducedMotion,
-        presenceId: presenceId,
-    }); }, [
-        initialDependency,
-        animateDependency,
-        parentContext.isReducedMotion,
-        animate,
-        layoutId,
-        presenceId,
-    ]);
-    // Update the `static` property every render. This is unlikely to change but also essentially free.
-    context.static = isStatic;
-    // Set initial state. If this is a static component (ie in Framer canvas), respond to updates
-    // in `initial`.
-    useInitialOrEveryRender(function () {
-        var initialToApply = initialState || parentContext.initial;
-        initialToApply && controls.apply(initialToApply);
-    }, !isStatic);
-    React.useEffect(function () {
-        hasMounted.current = true;
-    }, []);
-    return context;
-};
-
-var checkShouldInheritVariant = function (_a) {
-    var animate = _a.animate, variants = _a.variants, _b = _a.inherit, inherit = _b === void 0 ? true : _b;
-    return (inherit &&
-        !!variants &&
-        (!animate || animate instanceof AnimationControls));
-};
 
 var isMotionValue = function (value) {
     return value instanceof MotionValue;
@@ -8930,10 +9124,20 @@ function addMotionValues(visualElement, prev, source, isStyle, props) {
                 visualElement.addValue(key, motionValue(value));
             }
             else if (value !== prev[key]) {
-                // If the MotionValue already exists, update it with the
-                // latest incoming value
-                var motion = visualElement.getValue(key);
-                motion.set(value);
+                if (isMotionValue(prev[key])) {
+                    /**
+                     * If the previous value was a MotionValue, and this value isn't,
+                     * we want to create a new MotionValue rather than update one that's been removed.
+                     */
+                    visualElement.addValue(key, motionValue(value));
+                }
+                else {
+                    /**
+                     * Otherwise, we just want to ensure the MotionValue is of the latest value.
+                     */
+                    var motion = visualElement.getValue(key);
+                    motion.set(value);
+                }
             }
             foundMotionValue = true;
         }
@@ -8950,571 +9154,6 @@ function addMotionValues(visualElement, prev, source, isStyle, props) {
  */
 var reservedNames = new Set([]);
 var empty = function () { return ({}); };
-var resolveFinalValueInKeyframes = function (v) {
-    // TODO maybe throw if v.length - 1 is placeholder token?
-    return isKeyframesTarget(v) ? v[v.length - 1] || 0 : v;
-};
-
-/**
- * Check if value is a numerical string, ie a string that is purely a number eg "100" or "-100.1"
- */
-var isNumericalString = function (v) { return /^\-?\d*\.?\d+$/.test(v); };
-
-/**
- * Get the current value of every `MotionValue` in a `VisualElement`
- */
-var getCurrent = function (visualElement) {
-    var current = {};
-    visualElement.forEachValue(function (value, key) { return (current[key] = value.get()); });
-    return current;
-};
-/**
- * Get the current velocity of every `MotionValue` in a `VisualElement`
- */
-var getVelocity = function (visualElement) {
-    var velocity = {};
-    visualElement.forEachValue(function (value, key) { return (velocity[key] = value.getVelocity()); });
-    return velocity;
-};
-/**
- * Check if value is a function that returns a `Target`. A generic typeof === 'function'
- * check, just helps with typing.
- */
-var isTargetResolver = function (p) {
-    return typeof p === "function";
-};
-/**
- * Check if value is a list of variant labels
- */
-var isVariantLabels = function (v) { return Array.isArray(v); };
-/**
- * Control animations for a single component
- *
- * @internal
- */
-var VisualElementAnimationControls = /** @class */ (function () {
-    function VisualElementAnimationControls(visualElement, _a) {
-        var _this = this;
-        var makeTargetAnimatable = _a.makeTargetAnimatable;
-        /**
-         * A reference to the component's latest props. We could probably ditch this in
-         * favour to a reference to the `custom` prop now we don't send all props through
-         * to target resolvers.
-         */
-        this.props = {};
-        /**
-         * The component's variants, as provided by `variants`
-         */
-        this.variants = {};
-        /**
-         * A set of values that we animate back to when a value is cleared of all overrides.
-         */
-        this.baseTarget = {};
-        /**
-         * A series of target overrides that we can animate to/from when overrides are set/cleared.
-         */
-        this.overrides = [];
-        /**
-         * A series of target overrides as they were originally resolved.
-         */
-        this.resolvedOverrides = [];
-        /**
-         * A Set of currently active override indexes
-         */
-        this.activeOverrides = new Set();
-        /**
-         * A Set of value keys that are currently animating.
-         */
-        this.isAnimating = new Set();
-        /**
-         * Check if the associated `VisualElement` has a key with the provided string.
-         * Pre-bound to the class so we can provide directly to the `filter` in `checkForNewValues`.
-         */
-        this.hasValue = function (key) { return !_this.visualElement.hasValue(key); };
-        this.visualElement = visualElement;
-        this.makeTargetAnimatable = makeTargetAnimatable;
-        this.visualElement.forEachValue(function (value, key) { return (_this.baseTarget[key] = value.get()); });
-    }
-    /**
-     * Set the reference to the component's props.
-     * @param props -
-     */
-    VisualElementAnimationControls.prototype.setProps = function (props) {
-        this.props = props;
-    };
-    /**
-     * Set the reference to the component's variants
-     * @param variants -
-     */
-    VisualElementAnimationControls.prototype.setVariants = function (variants) {
-        if (variants)
-            this.variants = variants;
-    };
-    /**
-     * Set the component's default transition
-     * @param transition -
-     */
-    VisualElementAnimationControls.prototype.setDefaultTransition = function (transition) {
-        if (transition)
-            this.defaultTransition = transition;
-    };
-    /**
-     * Set motion values without animation.
-     *
-     * @param definition -
-     * @param isActive -
-     */
-    VisualElementAnimationControls.prototype.setValues = function (definition, _a) {
-        var _b = _a === void 0 ? {} : _a, _c = _b.isActive, isActive = _c === void 0 ? new Set() : _c, priority = _b.priority;
-        var _d = this.resolveVariant(definition), target = _d.target, transitionEnd = _d.transitionEnd;
-        target = this.transformValues(__assign(__assign({}, target), transitionEnd));
-        for (var key in target) {
-            if (isActive.has(key))
-                return;
-            isActive.add(key);
-            if (target) {
-                var targetValue = resolveFinalValueInKeyframes(target[key]);
-                if (this.visualElement.hasValue(key)) {
-                    var value = this.visualElement.getValue(key);
-                    value && value.set(targetValue);
-                }
-                else {
-                    this.visualElement.addValue(key, motionValue(targetValue));
-                }
-                if (!priority)
-                    this.baseTarget[key] = targetValue;
-            }
-        }
-    };
-    /**
-     * Allows `transformValues` to be set by a component that allows us to
-     * transform the values in a given `Target`. This allows Framer Library
-     * to extend Framer Motion to animate `Color` variables etc. Currently we have
-     * to manually support these extended types here in Framer Motion.
-     *
-     * @param values -
-     */
-    VisualElementAnimationControls.prototype.transformValues = function (values) {
-        var transformValues = this.props.transformValues;
-        return transformValues ? transformValues(values) : values;
-    };
-    /**
-     * Check a `Target` for new values we haven't animated yet, and add them
-     * to the `MotionValueMap`.
-     *
-     * Currently there's functionality here that is DOM-specific, we should allow
-     * this functionality to be injected by the factory that creates DOM-specific
-     * components.
-     *
-     * @param target -
-     */
-    VisualElementAnimationControls.prototype.checkForNewValues = function (target) {
-        var newValueKeys = Object.keys(target).filter(this.hasValue);
-        var numNewValues = newValueKeys.length;
-        if (!numNewValues)
-            return;
-        for (var i = 0; i < numNewValues; i++) {
-            var key = newValueKeys[i];
-            var targetValue = target[key];
-            var value = null;
-            // If this is a keyframes value, we can attempt to use the first value in the
-            // array as that's going to be the first value of the animation anyway
-            if (Array.isArray(targetValue)) {
-                value = targetValue[0];
-            }
-            // If it isn't a keyframes or the first keyframes value was set as `null`, read the
-            // value from the DOM. It might be worth investigating whether to check props (for SVG)
-            // or props.style (for HTML) if the value exists there before attempting to read.
-            if (value === null) {
-                var readValue = this.visualElement.readNativeValue(key);
-                value = readValue !== undefined ? readValue : target[key];
-                invariant(value !== null, "No initial value for \"" + key + "\" can be inferred. Ensure an initial value for \"" + key + "\" is defined on the component.");
-            }
-            if (typeof value === "string" && isNumericalString(value)) {
-                // If this is a number read as a string, ie "0" or "200", convert it to a number
-                value = parseFloat(value);
-            }
-            else if (!findValueType(value) && complex.test(targetValue)) {
-                // If value is not recognised as animatable, ie "none", create an animatable version origin based on the target
-                value = complex.getAnimatableNone(targetValue);
-            }
-            this.visualElement.addValue(key, motionValue(value));
-            this.baseTarget[key] = value;
-        }
-    };
-    /**
-     * Resolve a variant from its label or resolver into an actual `Target` we can animate to.
-     * @param variant -
-     */
-    VisualElementAnimationControls.prototype.resolveVariant = function (variant, _a) {
-        var custom = (_a === void 0 ? {} : _a).custom;
-        if (!variant) {
-            return {
-                target: undefined,
-                transition: undefined,
-                transitionEnd: undefined,
-            };
-        }
-        if (isTargetResolver(variant)) {
-            // resolve current and velocity
-            variant = variant(custom !== null && custom !== void 0 ? custom : this.props.custom, getCurrent(this.visualElement), getVelocity(this.visualElement));
-        }
-        var _b = variant.transition, transition = _b === void 0 ? this.defaultTransition : _b, transitionEnd = variant.transitionEnd, target = __rest(variant, ["transition", "transitionEnd"]);
-        return { transition: transition, transitionEnd: transitionEnd, target: target };
-    };
-    /**
-     * Get the highest active override priority index
-     */
-    VisualElementAnimationControls.prototype.getHighestPriority = function () {
-        if (!this.activeOverrides.size)
-            return 0;
-        return Math.max.apply(Math, __spread(Array.from(this.activeOverrides)));
-    };
-    /**
-     * Set an override. We add this layer of indirection so if, for instance, a tap gesture
-     * starts and overrides a hover gesture, when we clear the tap gesture and fallback to the
-     * hover gesture, if that hover gesture has changed in the meantime we can go to that rather
-     * than the one that was resolved when the hover gesture animation started.
-     *
-     * @param definition -
-     * @param overrideIndex -
-     */
-    VisualElementAnimationControls.prototype.setOverride = function (definition, overrideIndex) {
-        this.overrides[overrideIndex] = definition;
-        if (this.children) {
-            this.children.forEach(function (child) {
-                return child.setOverride(definition, overrideIndex);
-            });
-        }
-    };
-    /**
-     * Start an override animation.
-     * @param overrideIndex -
-     */
-    VisualElementAnimationControls.prototype.startOverride = function (overrideIndex) {
-        var override = this.overrides[overrideIndex];
-        if (override) {
-            return this.start(override, { priority: overrideIndex });
-        }
-    };
-    /**
-     * Clear an override. We check every value we animated to in this override to see if
-     * its present on any lower-priority overrides. If not, we animate it back to its base target.
-     * @param overrideIndex -
-     */
-    VisualElementAnimationControls.prototype.clearOverride = function (overrideIndex) {
-        var _this = this;
-        if (this.children) {
-            this.children.forEach(function (child) { return child.clearOverride(overrideIndex); });
-        }
-        var override = this.overrides[overrideIndex];
-        if (!override)
-            return;
-        this.activeOverrides.delete(overrideIndex);
-        var highest = this.getHighestPriority();
-        this.resetIsAnimating();
-        if (highest) {
-            var highestOverride = this.overrides[highest];
-            highestOverride && this.startOverride(highest);
-        }
-        // Figure out which remaining values were affected by the override and animate those
-        var overrideTarget = this.resolvedOverrides[overrideIndex];
-        if (!overrideTarget)
-            return;
-        var remainingValues = {};
-        for (var key in this.baseTarget) {
-            if (overrideTarget[key] !== undefined) {
-                remainingValues[key] = this.baseTarget[key];
-            }
-        }
-        this.onStart();
-        this.animate(remainingValues).then(function () { return _this.onComplete(); });
-    };
-    /**
-     * Apply a target/variant without any animation
-     */
-    VisualElementAnimationControls.prototype.apply = function (definition) {
-        if (Array.isArray(definition)) {
-            return this.applyVariantLabels(definition);
-        }
-        else if (typeof definition === "string") {
-            return this.applyVariantLabels([definition]);
-        }
-        else {
-            this.setValues(definition);
-        }
-    };
-    /**
-     * Apply variant labels without animation
-     */
-    VisualElementAnimationControls.prototype.applyVariantLabels = function (variantLabelList) {
-        var _this = this;
-        var isActive = new Set();
-        var reversedList = __spread(variantLabelList).reverse();
-        reversedList.forEach(function (key) {
-            var _a = _this.resolveVariant(_this.variants[key]), target = _a.target, transitionEnd = _a.transitionEnd;
-            target && _this.setValues(target, { isActive: isActive });
-            transitionEnd && _this.setValues(transitionEnd, { isActive: isActive });
-            if (_this.children && _this.children.size) {
-                _this.children.forEach(function (child) {
-                    return child.applyVariantLabels(variantLabelList);
-                });
-            }
-        });
-    };
-    VisualElementAnimationControls.prototype.start = function (definition, opts) {
-        var _this = this;
-        if (opts === void 0) { opts = {}; }
-        if (opts.priority) {
-            this.activeOverrides.add(opts.priority);
-        }
-        this.resetIsAnimating(opts.priority);
-        var animation;
-        if (isVariantLabels(definition)) {
-            animation = this.animateVariantLabels(definition, opts);
-        }
-        else if (typeof definition === "string") {
-            animation = this.animateVariant(definition, opts);
-        }
-        else {
-            animation = this.animate(definition, opts);
-        }
-        this.onStart();
-        return animation.then(function () { return _this.onComplete(); });
-    };
-    VisualElementAnimationControls.prototype.animate = function (animationDefinition, _a) {
-        var _this = this;
-        if (_a === void 0) { _a = {}; }
-        var _b = _a.delay, delay = _b === void 0 ? 0 : _b, _c = _a.priority, priority = _c === void 0 ? 0 : _c, transitionOverride = _a.transitionOverride, opts = __rest(_a, ["delay", "priority", "transitionOverride"]);
-        var _d = this.resolveVariant(animationDefinition, opts), target = _d.target, transition = _d.transition, transitionEnd = _d.transitionEnd;
-        if (transitionOverride) {
-            transition = transitionOverride;
-        }
-        if (!target)
-            return Promise.resolve();
-        target = this.transformValues(target);
-        if (transitionEnd) {
-            transitionEnd = this.transformValues(transitionEnd);
-        }
-        this.checkForNewValues(target);
-        var origin = this.transformValues(getOrigin(target, transition, this.visualElement));
-        if (this.makeTargetAnimatable) {
-            var animatable = this.makeTargetAnimatable(this.visualElement, target, origin, transitionEnd);
-            target = animatable.target;
-            transitionEnd = animatable.transitionEnd;
-        }
-        if (priority) {
-            this.resolvedOverrides[priority] = target;
-        }
-        this.checkForNewValues(target);
-        var animations = [];
-        for (var key in target) {
-            var value = this.visualElement.getValue(key);
-            if (!value || !target || target[key] === undefined)
-                continue;
-            var valueTarget = target[key];
-            if (!priority) {
-                this.baseTarget[key] = resolveFinalValueInKeyframes(valueTarget);
-            }
-            if (this.isAnimating.has(key))
-                continue;
-            this.isAnimating.add(key);
-            animations.push(startAnimation(key, value, valueTarget, __assign({ delay: delay }, transition)));
-        }
-        var allAnimations = Promise.all(animations);
-        return transitionEnd
-            ? allAnimations.then(function () {
-                _this.setValues(transitionEnd, { priority: priority });
-            })
-            : allAnimations;
-    };
-    VisualElementAnimationControls.prototype.animateVariantLabels = function (variantLabels, opts) {
-        var _this = this;
-        var animations = __spread(variantLabels).reverse()
-            .map(function (label) { return _this.animateVariant(label, opts); });
-        return Promise.all(animations);
-    };
-    VisualElementAnimationControls.prototype.animateVariant = function (variantLabel, opts) {
-        var _this = this;
-        var priority = (opts && opts.priority) || 0;
-        var variant = this.variants[variantLabel];
-        var transition = variant
-            ? this.resolveVariant(variant, opts).transition || {}
-            : {};
-        /**
-         * If we have a variant, create a callback that runs it as an animation.
-         * Otherwise, we resolve a Promise immediately for a composable no-op.
-         */
-        var getAnimation = variant
-            ? function () { return _this.animate(variant, opts); }
-            : function () { return Promise.resolve(); };
-        /**
-         * If we have children, create a callback that runs all their animations.
-         * Otherwise, we resolve a Promise immediately for a composable no-op.
-         */
-        var getChildrenAnimations = this.children
-            ? function (forwardDelay) {
-                if (forwardDelay === void 0) { forwardDelay = 0; }
-                var _a = transition.delayChildren, delayChildren = _a === void 0 ? 0 : _a;
-                return _this.animateChildren(variantLabel, delayChildren + forwardDelay, transition.staggerChildren, transition.staggerDirection, priority, opts === null || opts === void 0 ? void 0 : opts.custom);
-            }
-            : function () { return Promise.resolve(); };
-        /**
-         * If the transition explicitly defines a "when" option, we need to resolve either
-         * this animation or all children animations before playing the other.
-         */
-        var when = transition.when;
-        if (when) {
-            var _a = __read(when === "beforeChildren"
-                ? [getAnimation, getChildrenAnimations]
-                : [getChildrenAnimations, getAnimation], 2), first = _a[0], last = _a[1];
-            return first().then(last);
-        }
-        else {
-            return Promise.all([
-                getAnimation(),
-                getChildrenAnimations(opts === null || opts === void 0 ? void 0 : opts.delay),
-            ]);
-        }
-    };
-    VisualElementAnimationControls.prototype.animateChildren = function (variantLabel, delayChildren, staggerChildren, staggerDirection, priority, custom) {
-        if (delayChildren === void 0) { delayChildren = 0; }
-        if (staggerChildren === void 0) { staggerChildren = 0; }
-        if (staggerDirection === void 0) { staggerDirection = 1; }
-        if (priority === void 0) { priority = 0; }
-        if (!this.children) {
-            return Promise.resolve();
-        }
-        var animations = [];
-        var maxStaggerDuration = (this.children.size - 1) * staggerChildren;
-        var generateStaggerDuration = staggerDirection === 1
-            ? function (i) { return i * staggerChildren; }
-            : function (i) { return maxStaggerDuration - i * staggerChildren; };
-        Array.from(this.children).forEach(function (childControls, i) {
-            var animation = childControls.animateVariant(variantLabel, {
-                priority: priority,
-                delay: delayChildren + generateStaggerDuration(i),
-                custom: custom,
-            });
-            animations.push(animation);
-        });
-        return Promise.all(animations);
-    };
-    VisualElementAnimationControls.prototype.onStart = function () {
-        var onAnimationStart = this.props.onAnimationStart;
-        onAnimationStart && onAnimationStart();
-    };
-    VisualElementAnimationControls.prototype.onComplete = function () {
-        var onAnimationComplete = this.props.onAnimationComplete;
-        onAnimationComplete && onAnimationComplete();
-    };
-    VisualElementAnimationControls.prototype.checkOverrideIsAnimating = function (priority) {
-        var numOverrides = this.overrides.length;
-        for (var i = priority + 1; i < numOverrides; i++) {
-            var resolvedOverride = this.resolvedOverrides[i];
-            if (resolvedOverride) {
-                for (var key in resolvedOverride) {
-                    this.isAnimating.add(key);
-                }
-            }
-        }
-    };
-    VisualElementAnimationControls.prototype.resetIsAnimating = function (priority) {
-        if (priority === void 0) { priority = 0; }
-        this.isAnimating.clear();
-        // If this isn't the highest priority gesture, block the animation
-        // of anything that's currently being animated
-        if (priority < this.getHighestPriority()) {
-            this.checkOverrideIsAnimating(priority);
-        }
-        if (this.children) {
-            this.children.forEach(function (child) { return child.resetIsAnimating(priority); });
-        }
-    };
-    VisualElementAnimationControls.prototype.stop = function () {
-        this.visualElement.forEachValue(function (value) { return value.stop(); });
-    };
-    /**
-     * Add the controls of a child component.
-     * @param controls -
-     */
-    VisualElementAnimationControls.prototype.addChild = function (controls) {
-        if (!this.children) {
-            this.children = new Set();
-        }
-        this.children.add(controls);
-        // We set child overrides when `setOverride` is called, but also have to do it here
-        // as the first time `setOverride` is called all the children might not have been added yet.
-        this.overrides.forEach(function (override, i) {
-            override && controls.setOverride(override, i);
-        });
-    };
-    VisualElementAnimationControls.prototype.removeChild = function (controls) {
-        if (!this.children) {
-            return;
-        }
-        this.children.delete(controls);
-    };
-    VisualElementAnimationControls.prototype.resetChildren = function () {
-        if (this.children)
-            this.children.clear();
-    };
-    return VisualElementAnimationControls;
-}());
-function getOriginFromTransition(key, transition) {
-    if (!transition)
-        return;
-    var valueTransition = transition[key] || transition["default"] || transition;
-    return valueTransition.from;
-}
-function getOrigin(target, transition, visualElement) {
-    var _a, _b;
-    var origin = {};
-    for (var key in target) {
-        origin[key] = (_a = getOriginFromTransition(key, transition)) !== null && _a !== void 0 ? _a : (_b = visualElement.getValue(key)) === null || _b === void 0 ? void 0 : _b.get();
-    }
-    return origin;
-}
-
-/**
- * Creates an imperative set of controls to trigger animations.
- *
- * This allows a consolidated, uniform API for animations, to be triggered by other APIs like the `animate` prop, or the gesture handlers.
- *
- * @internal
- */
-function useVisualElementAnimation(visualElement, props, config) {
-    var subscribeToParentControls = checkShouldInheritVariant(props);
-    var variants = props.variants, transition = props.transition;
-    var parentControls = React.useContext(MotionContext).controls;
-    var presenceContext = React.useContext(PresenceContext);
-    var controls = useConstant(function () { return new VisualElementAnimationControls(visualElement, config); });
-    // Reset and resubscribe children every render to ensure stagger order is correct
-    if (!presenceContext || presenceContext.isPresent) {
-        controls.resetChildren();
-        controls.setProps(props);
-        controls.setVariants(variants);
-        controls.setDefaultTransition(transition);
-    }
-    // We have to subscribe to the parent controls within a useEffect rather than during render,
-    // as
-    React.useEffect(function () {
-        if (subscribeToParentControls && parentControls) {
-            parentControls.addChild(controls);
-        }
-    });
-    React.useEffect(function () {
-        return function () {
-            // Remove reference to onAnimationComplete from controls. All the MotionValues
-            // are unsubscribed from this component separately. We let animations run out
-            // as they might be animating other components.
-            var onAnimationComplete = props.onAnimationComplete, unmountProps = __rest(props, ["onAnimationComplete"]);
-            controls.setProps(unmountProps);
-            parentControls && parentControls.removeChild(controls);
-        };
-    }, []);
-    return controls;
-}
 
 /**
  * @public
@@ -9522,12 +9161,18 @@ function useVisualElementAnimation(visualElement, props, config) {
 var MotionConfigContext = React.createContext({
     transformPagePoint: function (p) { return p; },
     features: [],
+    isStatic: false,
 });
+
+function checkShouldInheritVariant(_a) {
+    var animate = _a.animate, variants = _a.variants, inherit = _a.inherit;
+    return inherit === undefined ? !!variants && !animate : inherit;
+}
 
 /**
  * Load features via renderless components based on the provided MotionProps
  */
-function useFeatures(defaultFeatures, isStatic, visualElement, controls, props, context, parentContext, shouldInheritVariant) {
+function useFeatures(defaultFeatures, isStatic, visualElement, props) {
     var plugins = React.useContext(MotionConfigContext);
     // If this is a static component, or we're rendering on the server, we don't load
     // any feature components
@@ -9539,10 +9184,10 @@ function useFeatures(defaultFeatures, isStatic, visualElement, controls, props, 
     // Decide which features we should render and add them to the returned array
     for (var i = 0; i < numFeatures; i++) {
         var _a = allFeatures[i], shouldRender = _a.shouldRender, key = _a.key, getComponent = _a.getComponent;
-        if (shouldRender(props, parentContext)) {
+        if (shouldRender(props)) {
             var Component = getComponent(props);
             Component &&
-                features.push(React.createElement(Component, __assign({ key: key }, props, { localContext: context, parentContext: parentContext, visualElement: visualElement, controls: controls, inherit: shouldInheritVariant })));
+                features.push(React.createElement(Component, __assign({ key: key }, props, { visualElement: visualElement, inherit: checkShouldInheritVariant(props) })));
         }
     }
     return features;
@@ -9626,6 +9271,161 @@ function useSnapshotOnUnmount(visualElement) {
 }
 
 /**
+ * When a component is the child of `AnimatePresence`, it can use `usePresence`
+ * to access information about whether it's still present in the React tree.
+ *
+ * ```jsx
+ * import { usePresence } from "framer-motion"
+ *
+ * export const Component = () => {
+ *   const [isPresent, safeToRemove] = usePresence()
+ *
+ *   useEffect(() => {
+ *     !isPresent && setTimeout(safeToRemove, 1000)
+ *   }, [isPresent])
+ *
+ *   return <div />
+ * }
+ * ```
+ *
+ * If `isPresent` is `false`, it means that a component has been removed the tree, but
+ * `AnimatePresence` won't really remove it until `safeToRemove` has been called.
+ *
+ * @public
+ */
+function usePresence() {
+    var context = React.useContext(PresenceContext);
+    if (context === null)
+        return [true, null];
+    var isPresent = context.isPresent, onExitComplete = context.onExitComplete, register = context.register;
+    // It's safe to call the following hooks conditionally (after an early return) because the context will always
+    // either be null or non-null for the lifespan of the component.
+    // Replace with useOpaqueId when released in React
+    var id = useUniqueId();
+    React.useEffect(function () { return register(id); }, []);
+    var safeToRemove = function () { return onExitComplete === null || onExitComplete === void 0 ? void 0 : onExitComplete(id); };
+    return !isPresent && onExitComplete ? [false, safeToRemove] : [true];
+}
+function isPresent(context) {
+    return context === null ? true : context.isPresent;
+}
+var counter$1 = 0;
+var incrementId = function () { return counter$1++; };
+var useUniqueId = function () { return useConstant(incrementId); };
+
+/**
+ * Use callback either only on the initial render or on all renders. In concurrent mode
+ * the "initial" render might run multiple times
+ *
+ * @param callback - Callback to run
+ * @param isInitialOnly - Set to `true` to only run on initial render, or `false` for all renders. Defaults to `false`.
+ *
+ * @public
+ */
+function useInitialOrEveryRender(callback, isInitialOnly) {
+    if (isInitialOnly === void 0) { isInitialOnly = false; }
+    var isInitialRender = React.useRef(true);
+    if (!isInitialOnly || (isInitialOnly && isInitialRender.current)) {
+        callback();
+    }
+    isInitialRender.current = false;
+}
+
+/**
+ * This hook is resonsible for creating the variant-propagation tree
+ * relationship between VisualElements.
+ */
+function useVariants(visualElement, _a, isStatic) {
+    var _b, _c;
+    var variants = _a.variants, initial = _a.initial, animate = _a.animate, whileTap = _a.whileTap, whileHover = _a.whileHover;
+    var _d = useVariantContext(), parent = _d.parent, parentInitial = _d.initial, parentAnimate = _d.animate;
+    var presenceContext = React.useContext(PresenceContext);
+    /**
+     * We only add this VisualElement to the variant tree *if* we're:
+     * 1. Being provided a variants prop
+     * 2. Being used to control variants (ie animate, whileHover etc)
+     * 3. Or being passed animation controls, which we have to assume may control variants
+     * Otherwise this component should be "invisible" to variant propagation. This is a concession
+     * to Framer which uses a `motion` component in every `Frame` and it might be if we change that
+     * in the future that this restriction is removed.
+     */
+    var controlsVariants = isVariantLabel$1(animate) ||
+        isVariantLabel$1(whileTap) ||
+        isVariantLabel$1(whileHover) ||
+        isAnimationControls(animate);
+    var isVariantNode = variants || controlsVariants;
+    /**
+     * Override initial with one from a parent `AnimatePresence`, if present
+     */
+    initial = (_b = presenceContext === null || presenceContext === void 0 ? void 0 : presenceContext.initial) !== null && _b !== void 0 ? _b : initial;
+    /**
+     * If initial is false, and animate isn't animation controls, we assign animate
+     * to initial and set our values to that for the initial render.
+     */
+    if (initial === false && !isAnimationControls(animate)) {
+        initial = animate;
+    }
+    var context = React.useMemo(function () { return ({
+        parent: isVariantNode ? visualElement : parent,
+        initial: isVariantLabel$1(initial) ? initial : parentInitial,
+        animate: isVariantLabel$1(animate) ? animate : parentAnimate,
+    }); }, 
+    /**
+     * Only create a new context value (thereby re-rendering children) if this
+     * is a static component and `initial` changes.
+     */
+    [isStatic ? initial : null]);
+    // Set initial state. If this is a static component (ie in Framer canvas), respond to updates
+    // in `initial`.
+    useInitialOrEveryRender(function () {
+        var initialToApply = initial || parentInitial;
+        initialToApply && setValues(visualElement, initialToApply);
+    }, !isStatic);
+    /**
+     * Subscribe to the parent visualElement if this is a participant in the variant tree
+     */
+    isVariantNode && !controlsVariants && (parent === null || parent === void 0 ? void 0 : parent.addVariantChild(visualElement));
+    /**
+     * If this component isn't exiting the tree, clear all the children in the render phase.
+     * This will allow children to resubscribe in the correct order to ensure the correct stagger order.
+     */
+    isPresent(presenceContext) && ((_c = visualElement.variantChildrenOrder) === null || _c === void 0 ? void 0 : _c.clear());
+    /**
+     * Subscribe to the propagated parent.
+     */
+    React.useEffect(function () {
+        isVariantNode && (parent === null || parent === void 0 ? void 0 : parent.addVariantChildOrder(visualElement));
+    });
+    /**
+     * Track mount status so children can detect whether they were present during the
+     * component's initial mount.
+     */
+    React.useEffect(function () {
+        visualElement.isMounted = true;
+        return function () {
+            var _a;
+            visualElement.isMounted = false;
+            (_a = parent === null || parent === void 0 ? void 0 : parent.variantChildren) === null || _a === void 0 ? void 0 : _a.delete(visualElement);
+        };
+    }, []);
+    /**
+     * We want to update the "base" (or fallback) value on the initial render.
+     */
+    useInitialOrEveryRender(function () {
+        visualElement.forEachValue(function (value, key) {
+            visualElement.baseTarget[key] = value.get();
+        });
+    }, true);
+    return context;
+}
+function isVariantLabel$1(v) {
+    return typeof v === "string" || Array.isArray(v);
+}
+function isAnimationControls(v) {
+    return typeof v === "object" && typeof v.start === "function";
+}
+
+/**
  * Create a `motion` component.
  *
  * This function accepts a Component argument, which can be either a string (ie "div"
@@ -9637,42 +9437,41 @@ function useSnapshotOnUnmount(visualElement) {
  * @internal
  */
 function createMotionComponent(Component, _a) {
-    var defaultFeatures = _a.defaultFeatures, useVisualElement = _a.useVisualElement, render = _a.render, animationControlsConfig = _a.animationControlsConfig;
+    var defaultFeatures = _a.defaultFeatures, useVisualElement = _a.useVisualElement, render = _a.render;
     function MotionComponent(props, externalRef) {
-        var parentContext = React.useContext(MotionContext);
-        var shouldInheritVariant = checkShouldInheritVariant(props);
         /**
-         * If a component isStatic, we only visually update it as a
+         * If a component is static, we only visually update it as a
          * result of a React re-render, rather than any interactions or animations.
-         * If this component or any ancestor isStatic, we disable hardware acceleration
+         * If this component or any ancestor is static, we disable hardware acceleration
          * and don't load any additional functionality.
          */
-        var isStatic = parentContext.static || props.static || false;
+        var isStatic = React.useContext(MotionConfigContext).isStatic;
         /**
          * Create a VisualElement for this component. A VisualElement provides a common
          * interface to renderer-specific APIs (ie DOM/Three.js etc) as well as
          * providing a way of rendering to these APIs outside of the React render loop
          * for more performant animations and interactions
          */
-        var visualElement = useVisualElement(Component, props, parentContext.visualElement, isStatic, externalRef);
+        var visualElement = useVisualElement(Component, props, isStatic, externalRef);
         /**
-         * Scrape MotionValues from props and add/remove them to/from
-         * the VisualElement as necessary.
+         * Scrape MotionValues from props and add/remove them to/from the VisualElement.
          */
         useMotionValues(visualElement, props);
         /**
-         * Create animation controls for the VisualElement. It might be
-         * interesting to try and combine this with VisualElement itself in a further refactor.
+         * Add the visualElement as a node in the variant tree.
          */
-        var controls = useVisualElementAnimation(visualElement, props, animationControlsConfig);
-        /**
-         * Build the MotionContext to pass on to the next `motion` component.
-         */
-        var context = useMotionContext(parentContext, controls, visualElement, isStatic, props);
+        var variantContext = useVariants(visualElement, props, isStatic);
         /**
          * Load features as renderless components unless the component isStatic
          */
-        var features = useFeatures(defaultFeatures, isStatic, visualElement, controls, props, context, parentContext, shouldInheritVariant);
+        var features = useFeatures(defaultFeatures, isStatic, visualElement, props);
+        /**
+         * Only create a new context value when the sub-contexts change.
+         */
+        var context = React.useMemo(function () { return ({ visualElement: visualElement, variantContext: variantContext }); }, [
+            visualElement,
+            variantContext,
+        ]);
         var component = render(Component, props, visualElement);
         /**
          * If this component is a child of AnimateSharedLayout, we need to snapshot the component
@@ -9733,8 +9532,6 @@ function getGlobalLock(drag) {
 }
 
 function addDomEvent(target, eventName, handler, options) {
-    if (!handler)
-        return;
     target.addEventListener(eventName, handler, options);
     return function () { return target.removeEventListener(eventName, handler, options); };
 }
@@ -9785,8 +9582,6 @@ function isTouchEvent(event) {
  * @param eventHandler
  */
 function filterPrimaryPointer(eventHandler) {
-    if (!eventHandler)
-        return undefined;
     return function (event) {
         var isMouseEvent = event instanceof MouseEvent;
         var isPrimaryPointer = !isMouseEvent ||
@@ -9826,9 +9621,9 @@ function getViewportPointFromEvent(event) {
 }
 var wrapHandler = function (handler, shouldFilterPrimaryPointer) {
     if (shouldFilterPrimaryPointer === void 0) { shouldFilterPrimaryPointer = false; }
-    if (!handler)
-        return;
-    var listener = function (event) { return handler(event, extractEventInfo(event)); };
+    var listener = function (event) {
+        return handler(event, extractEventInfo(event));
+    };
     return shouldFilterPrimaryPointer
         ? filterPrimaryPointer(listener)
         : listener;
@@ -9878,44 +9673,8 @@ function addPointerEvent(target, eventName, handler, options) {
     return addDomEvent(target, getPointerEventName(eventName), wrapHandler(handler, eventName === "pointerdown"), options);
 }
 function usePointerEvent(ref, eventName, handler, options) {
-    return useDomEvent(ref, getPointerEventName(eventName), wrapHandler(handler, eventName === "pointerdown"), options);
+    return useDomEvent(ref, getPointerEventName(eventName), handler && wrapHandler(handler, eventName === "pointerdown"), options);
 }
-
-/** @public */
-var Point;
-(function (Point) {
-    /** @beta */
-    Point.subtract = function (a, b) {
-        return { x: a.x - b.x, y: a.y - b.y };
-    };
-    /** @beta */
-    Point.relativeTo = function (idOrElem) {
-        var elem;
-        var getElem = function () {
-            // Caching element here could be leaky because of React lifecycle
-            if (elem !== undefined)
-                return elem;
-            if (typeof idOrElem === "string") {
-                elem = document.getElementById(idOrElem);
-            }
-            else {
-                elem = idOrElem;
-            }
-            return elem;
-        };
-        return function (_a) {
-            var x = _a.x, y = _a.y;
-            var localElem = getElem();
-            if (!localElem)
-                return undefined;
-            var rect = localElem.getBoundingClientRect();
-            return {
-                x: x - rect.left - window.scrollX,
-                y: y - rect.top - window.scrollY,
-            };
-        };
-    };
-})(Point || (Point = {}));
 
 /**
  * @internal
@@ -9961,6 +9720,25 @@ var PanSession = /** @class */ (function () {
             }
             onMove && onMove(_this.lastMoveEvent, info);
         };
+        this.handlePointerMove = function (event, info) {
+            _this.lastMoveEvent = event;
+            _this.lastMoveEventInfo = transformPoint(info, _this.transformPagePoint);
+            // Because Safari doesn't trigger mouseup events when it's above a `<select>`
+            if (isMouseEvent(event) && event.buttons === 0) {
+                _this.handlePointerUp(event, info);
+                return;
+            }
+            // Throttle mouse move event to once per frame
+            sync.update(_this.updatePoint, true);
+        };
+        this.handlePointerUp = function (event, info) {
+            _this.end();
+            var onEnd = _this.handlers.onEnd;
+            if (!onEnd)
+                return;
+            var panInfo = getPanInfo(transformPoint(info, _this.transformPagePoint), _this.history);
+            onEnd && onEnd(event, panInfo);
+        };
         // If we have more than one touch, don't start detecting this gesture
         if (isTouchEvent(event) && event.touches.length > 1)
             return;
@@ -9974,32 +9752,8 @@ var PanSession = /** @class */ (function () {
         var onSessionStart = handlers.onSessionStart;
         onSessionStart &&
             onSessionStart(event, getPanInfo(initialInfo, this.history));
-        var removeOnPointerMove = addPointerEvent(window, "pointermove", function (event, info) { return _this.handlePointerMove(event, info); });
-        var removeOnPointerUp = addPointerEvent(window, "pointerup", function (event, info) { return _this.handlePointerUp(event, info); });
-        this.removeListeners = function () {
-            removeOnPointerMove && removeOnPointerMove();
-            removeOnPointerUp && removeOnPointerUp();
-        };
+        this.removeListeners = pipe(addPointerEvent(window, "pointermove", this.handlePointerMove), addPointerEvent(window, "pointerup", this.handlePointerUp), addPointerEvent(window, "pointercancel", this.handlePointerUp));
     }
-    PanSession.prototype.handlePointerMove = function (event, info) {
-        this.lastMoveEvent = event;
-        this.lastMoveEventInfo = transformPoint(info, this.transformPagePoint);
-        // Because Safari doesn't trigger mouseup events when it's above a `<select>`
-        if (isMouseEvent(event) && event.buttons === 0) {
-            this.handlePointerUp(event, info);
-            return;
-        }
-        // Throttle mouse move event to once per frame
-        sync.update(this.updatePoint, true);
-    };
-    PanSession.prototype.handlePointerUp = function (event, info) {
-        this.end();
-        var onEnd = this.handlers.onEnd;
-        if (!onEnd)
-            return;
-        var panInfo = getPanInfo(transformPoint(info, this.transformPagePoint), this.history);
-        onEnd && onEnd(event, panInfo);
-    };
     PanSession.prototype.updateHandlers = function (handlers) {
         this.handlers = handlers;
     };
@@ -10012,12 +9766,15 @@ var PanSession = /** @class */ (function () {
 function transformPoint(info, transformPagePoint) {
     return transformPagePoint ? { point: transformPagePoint(info.point) } : info;
 }
+function subtractPoint(a, b) {
+    return { x: a.x - b.x, y: a.y - b.y };
+}
 function getPanInfo(_a, history) {
     var point = _a.point;
     return {
         point: point,
-        delta: Point.subtract(point, lastDevicePoint(history)),
-        offset: Point.subtract(point, startDevicePoint(history)),
+        delta: subtractPoint(point, lastDevicePoint(history)),
+        offset: subtractPoint(point, startDevicePoint(history)),
         velocity: getVelocity$1(history, 0.1),
     };
 }
@@ -10682,7 +10439,7 @@ var Component = makeRenderlessComponent(function (_a) {
  */
 var Drag = {
     key: "drag",
-    shouldRender: function (props) { return !!props.drag; },
+    shouldRender: function (props) { return !!props.drag || !!props.dragControls; },
     getComponent: function () { return Component; },
 };
 
@@ -10759,31 +10516,27 @@ var tapGesturePriority = getGesturePriority("whileTap");
  * @param handlers -
  * @internal
  */
-function useTapGesture(_a, ref) {
-    var onTap = _a.onTap, onTapStart = _a.onTapStart, onTapCancel = _a.onTapCancel, whileTap = _a.whileTap, controls = _a.controls;
+function useTapGesture(_a, visualElement) {
+    var onTap = _a.onTap, onTapStart = _a.onTapStart, onTapCancel = _a.onTapCancel, whileTap = _a.whileTap;
     var hasTapListeners = onTap || onTapStart || onTapCancel || whileTap;
     var isTapping = React.useRef(false);
     var cancelPointerEventListener = React.useRef(null);
     function removePointerUp() {
-        cancelPointerEventListener.current &&
-            cancelPointerEventListener.current();
+        var _a;
+        (_a = cancelPointerEventListener.current) === null || _a === void 0 ? void 0 : _a.call(cancelPointerEventListener);
         cancelPointerEventListener.current = null;
     }
-    if (whileTap && controls) {
-        controls.setOverride(whileTap, tapGesturePriority);
-    }
+    whileTap && setOverride(visualElement, whileTap, tapGesturePriority);
     // We load this event handler into a ref so we can later refer to
     // onPointerUp.current which will always have reference to the latest props
     var onPointerUp = React.useRef(null);
     onPointerUp.current = function (event, info) {
-        var element = ref.current;
+        var element = visualElement.getInstance();
         removePointerUp();
         if (!isTapping.current || !element)
             return;
         isTapping.current = false;
-        if (controls && whileTap) {
-            controls.clearOverride(tapGesturePriority);
-        }
+        whileTap && clearOverride(visualElement, tapGesturePriority);
         // Check the gesture lock - if we get it, it means no drag gesture is active
         // and we can safely fire the tap gesture.
         var openGestureLock = getGlobalLock(true);
@@ -10791,25 +10544,23 @@ function useTapGesture(_a, ref) {
             return;
         openGestureLock();
         if (!isNodeOrChild(element, event.target)) {
-            onTapCancel && onTapCancel(event, info);
+            onTapCancel === null || onTapCancel === void 0 ? void 0 : onTapCancel(event, info);
         }
         else {
-            onTap && onTap(event, info);
+            onTap === null || onTap === void 0 ? void 0 : onTap(event, info);
         }
     };
     function onPointerDown(event, info) {
         removePointerUp();
-        cancelPointerEventListener.current = addPointerEvent(window, "pointerup", function (event, info) { return onPointerUp.current(event, info); });
-        var element = ref.current;
+        cancelPointerEventListener.current = pipe(addPointerEvent(window, "pointerup", function (event, info) { var _a; return (_a = onPointerUp.current) === null || _a === void 0 ? void 0 : _a.call(onPointerUp, event, info); }), addPointerEvent(window, "pointercancel", function (event, info) { var _a; return (_a = onPointerUp.current) === null || _a === void 0 ? void 0 : _a.call(onPointerUp, event, info); }));
+        var element = visualElement.getInstance();
         if (!element || isTapping.current)
             return;
         isTapping.current = true;
-        onTapStart && onTapStart(event, info);
-        if (controls && whileTap) {
-            controls.startOverride(tapGesturePriority);
-        }
+        onTapStart === null || onTapStart === void 0 ? void 0 : onTapStart(event, info);
+        whileTap && startOverride(visualElement, tapGesturePriority);
     }
-    usePointerEvent(ref, "pointerdown", hasTapListeners ? onPointerDown : undefined);
+    usePointerEvent(visualElement, "pointerdown", hasTapListeners ? onPointerDown : undefined);
     useUnmountEffect(removePointerUp);
 }
 
@@ -10824,24 +10575,18 @@ var filterTouch = function (listener) { return function (event, info) {
  * @param ref
  * @internal
  */
-function useHoverGesture(_a, ref) {
-    var whileHover = _a.whileHover, onHoverStart = _a.onHoverStart, onHoverEnd = _a.onHoverEnd, controls = _a.controls;
-    if (whileHover && controls) {
-        controls.setOverride(whileHover, hoverPriority);
+function useHoverGesture(_a, visualElement) {
+    var whileHover = _a.whileHover, onHoverStart = _a.onHoverStart, onHoverEnd = _a.onHoverEnd;
+    if (whileHover) {
+        setOverride(visualElement, whileHover, hoverPriority);
     }
-    usePointerEvent(ref, "pointerenter", filterTouch(function (event, info) {
-        if (onHoverStart)
-            onHoverStart(event, info);
-        if (whileHover && controls) {
-            controls.startOverride(hoverPriority);
-        }
+    usePointerEvent(visualElement, "pointerenter", filterTouch(function (event, info) {
+        onHoverStart === null || onHoverStart === void 0 ? void 0 : onHoverStart(event, info);
+        whileHover && startOverride(visualElement, hoverPriority);
     }));
-    usePointerEvent(ref, "pointerleave", filterTouch(function (event, info) {
-        if (onHoverEnd)
-            onHoverEnd(event, info);
-        if (whileHover && controls) {
-            controls.clearOverride(hoverPriority);
-        }
+    usePointerEvent(visualElement, "pointerleave", filterTouch(function (event, info) {
+        onHoverEnd === null || onHoverEnd === void 0 ? void 0 : onHoverEnd(event, info);
+        whileHover && clearOverride(visualElement, hoverPriority);
     }));
 }
 
@@ -10852,10 +10597,10 @@ function useHoverGesture(_a, ref) {
  * @param ref - React `ref` containing a DOM `Element`
  * @public
  */
-function useGestures(props, ref) {
-    usePanGesture(props, ref);
-    useTapGesture(props, ref);
-    useHoverGesture(props, ref);
+function useGestures(props, visualElement) {
+    usePanGesture(props, visualElement);
+    useTapGesture(props, visualElement);
+    useHoverGesture(props, visualElement);
 }
 
 var gestureProps = [
@@ -10886,8 +10631,150 @@ var Gestures = {
     getComponent: function () { return GestureComponent; },
 };
 
+/**
+ * Control animations on one or more components.
+ *
+ * @public
+ */
+var AnimationControls = /** @class */ (function () {
+    function AnimationControls() {
+        /**
+         * Track whether the host component has mounted.
+         *
+         * @internal
+         */
+        this.hasMounted = false;
+        /**
+         * Pending animations that are started before a component is mounted.
+         *
+         * @internal
+         */
+        this.pendingAnimations = [];
+        /**
+         * A collection of linked component animation controls.
+         *
+         * @internal
+         */
+        this.subscribers = new Set();
+    }
+    /**
+     * Subscribes a component's animation controls to this.
+     *
+     * @param controls - The controls to subscribe
+     * @returns An unsubscribe function.
+     *
+     * @internal
+     */
+    AnimationControls.prototype.subscribe = function (visualElement) {
+        var _this = this;
+        this.subscribers.add(visualElement);
+        return function () { return _this.subscribers.delete(visualElement); };
+    };
+    /**
+     * Starts an animation on all linked components.
+     *
+     * @remarks
+     *
+     * ```jsx
+     * controls.start("variantLabel")
+     * controls.start({
+     *   x: 0,
+     *   transition: { duration: 1 }
+     * })
+     * ```
+     *
+     * @param definition - Properties or variant label to animate to
+     * @param transition - Optional `transtion` to apply to a variant
+     * @returns - A `Promise` that resolves when all animations have completed.
+     *
+     * @public
+     */
+    AnimationControls.prototype.start = function (definition, transitionOverride) {
+        var _this = this;
+        if (this.hasMounted) {
+            var animations_1 = [];
+            this.subscribers.forEach(function (visualElement) {
+                var animation = startVisualElementAnimation(visualElement, definition, { transitionOverride: transitionOverride });
+                animations_1.push(animation);
+            });
+            return Promise.all(animations_1);
+        }
+        else {
+            return new Promise(function (resolve) {
+                _this.pendingAnimations.push({
+                    animation: [definition, transitionOverride],
+                    resolve: resolve,
+                });
+            });
+        }
+    };
+    /**
+     * Instantly set to a set of properties or a variant.
+     *
+     * ```jsx
+     * // With properties
+     * controls.set({ opacity: 0 })
+     *
+     * // With variants
+     * controls.set("hidden")
+     * ```
+     *
+     * @internalremarks
+     * We could perform a similar trick to `.start` where this can be called before mount
+     * and we maintain a list of of pending actions that get applied on mount. But the
+     * expectation of `set` is that it happens synchronously and this would be difficult
+     * to do before any children have even attached themselves. It's also poor practise
+     * and we should discourage render-synchronous `.start` calls rather than lean into this.
+     *
+     * @public
+     */
+    AnimationControls.prototype.set = function (definition) {
+        invariant(this.hasMounted, "controls.set() should only be called after a component has mounted. Consider calling within a useEffect hook.");
+        return this.subscribers.forEach(function (visualElement) {
+            setValues(visualElement, definition);
+        });
+    };
+    /**
+     * Stops animations on all linked components.
+     *
+     * ```jsx
+     * controls.stop()
+     * ```
+     *
+     * @public
+     */
+    AnimationControls.prototype.stop = function () {
+        this.subscribers.forEach(function (visualElement) {
+            stopAnimation(visualElement);
+        });
+    };
+    /**
+     * Initialises the animation controls.
+     *
+     * @internal
+     */
+    AnimationControls.prototype.mount = function () {
+        var _this = this;
+        this.hasMounted = true;
+        this.pendingAnimations.forEach(function (_a) {
+            var animation = _a.animation, resolve = _a.resolve;
+            _this.start.apply(_this, __spread(animation)).then(resolve);
+        });
+    };
+    /**
+     * Stops all child animations when the host component unmounts.
+     *
+     * @internal
+     */
+    AnimationControls.prototype.unmount = function () {
+        this.hasMounted = false;
+        this.stop();
+    };
+    return AnimationControls;
+}());
+
 var ExitComponent = makeRenderlessComponent(function (props) {
-    var animate = props.animate, controls = props.controls, exit = props.exit;
+    var animate = props.animate, exit = props.exit, visualElement = props.visualElement;
     var _a = __read(usePresence(), 2), isPresent = _a[0], onExitComplete = _a[1];
     var presenceContext = React.useContext(PresenceContext);
     var isPlayingExitAnimation = React.useRef(false);
@@ -10897,7 +10784,9 @@ var ExitComponent = makeRenderlessComponent(function (props) {
     React.useEffect(function () {
         if (!isPresent) {
             if (!isPlayingExitAnimation.current && exit) {
-                controls.start(exit, { custom: custom }).then(onExitComplete);
+                startVisualElementAnimation(visualElement, exit, {
+                    custom: custom,
+                }).then(onExitComplete);
             }
             isPlayingExitAnimation.current = true;
         }
@@ -10905,12 +10794,12 @@ var ExitComponent = makeRenderlessComponent(function (props) {
             animate &&
             typeof animate !== "boolean" &&
             !(animate instanceof AnimationControls)) {
-            controls.start(animate);
+            startVisualElementAnimation(visualElement, animate);
         }
         if (isPresent) {
             isPlayingExitAnimation.current = false;
         }
-    }, [animate, controls, custom, exit, isPresent, onExitComplete, props]);
+    }, [animate, custom, exit, isPresent, onExitComplete, props]);
 });
 /**
  * @public
@@ -10920,13 +10809,6 @@ var Exit = {
     shouldRender: function (props) { return !!props.exit && !checkShouldInheritVariant(props); },
     getComponent: function () { return ExitComponent; },
 };
-
-var AnimatePropType;
-(function (AnimatePropType) {
-    AnimatePropType["Target"] = "Target";
-    AnimatePropType["VariantLabel"] = "VariantLabel";
-    AnimatePropType["AnimationSubscription"] = "AnimationSubscription";
-})(AnimatePropType || (AnimatePropType = {}));
 
 function shallowCompare(next, prev) {
     if (prev === null)
@@ -10975,7 +10857,7 @@ function targetWithoutTransition(_a, mergeTransitionEnd) {
  *
  * @internal
  */
-function useAnimateProp(targetAndTransition, controls, visualElement, defaultTransition) {
+function useAnimateProp(visualElement, targetAndTransition, defaultTransition) {
     var isInitialRender = React.useRef(true);
     var prevValues = React.useRef(null);
     if (!prevValues.current) {
@@ -11005,7 +10887,7 @@ function useAnimateProp(targetAndTransition, controls, visualElement, defaultTra
         isInitialRender.current = false;
         prevValues.current = __assign(__assign({}, prevValues.current), finalTarget);
         if (Object.keys(targetToAnimate).length) {
-            controls.start(__assign(__assign({}, targetToAnimate), { transition: targetAndTransition.transition || defaultTransition, transitionEnd: targetAndTransition.transitionEnd }));
+            startVisualElementAnimation(visualElement, __assign(__assign({}, targetToAnimate), { transition: targetAndTransition.transition || defaultTransition, transitionEnd: targetAndTransition.transitionEnd }));
         }
     }, [targetAndTransition]);
 }
@@ -11045,10 +10927,11 @@ var hasVariantChanged = function (oldVariant, newVariant) {
  *
  * @internal
  */
-function useVariants(initial, animate, inherit, controls) {
+function useVariantAnimations(visualElement, initial, animate, inherit) {
+    var _a;
     var targetVariants = resolveVariantLabels(animate);
-    var context = React.useContext(MotionContext);
-    var parentAlreadyMounted = context.hasMounted && context.hasMounted.current;
+    var context = useVariantContext();
+    var parentAlreadyMounted = (_a = context.parent) === null || _a === void 0 ? void 0 : _a.isMounted;
     var hasMounted = React.useRef(false);
     React.useEffect(function () {
         var shouldAnimate = false;
@@ -11064,7 +10947,8 @@ function useVariants(initial, animate, inherit, controls) {
                 hasMounted.current ||
                     hasVariantChanged(resolveVariantLabels(initial), targetVariants);
         }
-        shouldAnimate && controls.start(targetVariants);
+        shouldAnimate &&
+            startVisualElementAnimation(visualElement, targetVariants);
         hasMounted.current = true;
     }, asDependencyList(targetVariants));
 }
@@ -11078,58 +10962,51 @@ function useVariants(initial, animate, inherit, controls) {
  *
  * @internal
  */
-function useAnimationGroupSubscription(animation, controls) {
-    var unsubscribe = React.useMemo(function () { return animation.subscribe(controls); }, [
+function useAnimationGroupSubscription(visualElement, animation) {
+    var unsubscribe = React.useMemo(function () { return animation.subscribe(visualElement); }, [
         animation,
     ]);
-    React.useEffect(function () { return function () {
-        unsubscribe && unsubscribe();
-    }; }, [unsubscribe]);
+    useUnmountEffect(function () { return unsubscribe === null || unsubscribe === void 0 ? void 0 : unsubscribe(); });
 }
 
-var _a, _b;
-var AnimatePropComponents = (_a = {},
-    _a[AnimatePropType.Target] = makeRenderlessComponent(function (_a) {
-        var animate = _a.animate, controls = _a.controls, visualElement = _a.visualElement, transition = _a.transition;
-        return useAnimateProp(animate, controls, visualElement, transition);
-    }),
-    _a[AnimatePropType.VariantLabel] = makeRenderlessComponent(function (_a) {
-        var animate = _a.animate, _b = _a.inherit, inherit = _b === void 0 ? true : _b, controls = _a.controls, initial = _a.initial;
-        return useVariants(initial, animate, inherit, controls);
-    }),
-    _a[AnimatePropType.AnimationSubscription] = makeRenderlessComponent(function (_a) {
-        var animate = _a.animate, controls = _a.controls;
-        return useAnimationGroupSubscription(animate, controls);
-    }),
-    _a);
-var isVariantLabel$1 = function (prop) {
-    return Array.isArray(prop) || typeof prop === "string";
-};
-var isAnimationSubscription = function (_a) {
-    var animate = _a.animate;
-    return animate instanceof AnimationControls;
-};
-var animationProps = ["initial", "animate", "whileTap", "whileHover"];
-var animatePropTypeTests = (_b = {},
-    _b[AnimatePropType.Target] = function (props) {
-        return (props.animate !== undefined &&
-            !isVariantLabel$1(props.animate) &&
-            !isAnimationSubscription(props));
+var target = {
+    shouldRender: function (props) {
+        return props.animate !== undefined &&
+            !isVariantLabel(props.animate) &&
+            !isAnimationControls(props.animate);
     },
-    _b[AnimatePropType.VariantLabel] = function (props) {
-        return (props.variants !== undefined ||
-            animationProps.some(function (key) { return typeof props[key] === "string"; }));
+    Component: makeRenderlessComponent(function (_a) {
+        var animate = _a.animate, visualElement = _a.visualElement, transition = _a.transition;
+        return useAnimateProp(visualElement, animate, transition);
+    }),
+};
+var variant = {
+    shouldRender: function (props) {
+        return (props.variants && !isAnimationControls(props.animate)) ||
+            isVariantLabel(props.animate);
     },
-    _b[AnimatePropType.AnimationSubscription] = isAnimationSubscription,
-    _b);
+    Component: makeRenderlessComponent(function (_a) {
+        var animate = _a.animate, _b = _a.inherit, inherit = _b === void 0 ? true : _b, visualElement = _a.visualElement, initial = _a.initial;
+        return useVariantAnimations(visualElement, initial, animate, inherit);
+    }),
+};
+var controls = {
+    shouldRender: function (props) { return isAnimationControls(props.animate); },
+    Component: makeRenderlessComponent(function (_a) {
+        var animate = _a.animate, visualElement = _a.visualElement;
+        return useAnimationGroupSubscription(visualElement, animate);
+    }),
+};
 var getAnimationComponent = function (props) {
-    var animatePropType = undefined;
-    for (var key in AnimatePropType) {
-        if (animatePropTypeTests[key](props)) {
-            animatePropType = key;
-        }
+    if (target.shouldRender(props)) {
+        return target.Component;
     }
-    return animatePropType ? AnimatePropComponents[animatePropType] : undefined;
+    else if (variant.shouldRender(props)) {
+        return variant.Component;
+    }
+    else if (controls.shouldRender(props)) {
+        return controls.Component;
+    }
 };
 /**
  * @public
@@ -11226,6 +11103,7 @@ var Animate = /** @class */ (function (_super) {
     Animate.prototype.componentDidMount = function () {
         var _this = this;
         var visualElement = this.props.visualElement;
+        visualElement.animateMotionValue = startAnimation;
         visualElement.enableLayoutProjection();
         this.unsubLayoutReady = visualElement.onLayoutUpdate(this.animate);
         visualElement.updateConfig(__assign(__assign({}, visualElement.config), { safeToRemove: function () { return _this.safeToRemove(); } }));
@@ -11388,10 +11266,10 @@ var Measure = /** @class */ (function (_super) {
         return null;
     };
     return Measure;
-}(React__default.Component));
+}(React__default['default'].Component));
 function MeasureContextProvider(props) {
     var syncLayout = React.useContext(SharedLayoutContext);
-    return React__default.createElement(Measure, __assign({}, props, { syncLayout: syncLayout }));
+    return React__default['default'].createElement(Measure, __assign({}, props, { syncLayout: syncLayout }));
 }
 var MeasureLayout = {
     key: "measure-layout",
@@ -11401,6 +11279,18 @@ var MeasureLayout = {
     getComponent: function () { return MeasureContextProvider; },
 };
 
+var allMotionFeatures = [
+    MeasureLayout,
+    Animation,
+    Drag,
+    Gestures,
+    Exit,
+    AnimateLayout,
+];
+var domBaseConfig = {
+    useVisualElement: useDomVisualElement,
+    render: render,
+};
 /**
  * Convert any React component into a `motion` component. The provided component
  * **must** use `React.forwardRef` to the underlying DOM component you want to animate.
@@ -11416,14 +11306,7 @@ var MeasureLayout = {
  * @public
  */
 function createMotionProxy(defaultFeatures) {
-    var config = {
-        defaultFeatures: defaultFeatures,
-        useVisualElement: useDomVisualElement,
-        render: render,
-        animationControlsConfig: {
-            makeTargetAnimatable: parseDomVariant,
-        },
-    };
+    var config = __assign(__assign({}, domBaseConfig), { defaultFeatures: defaultFeatures });
     function custom(Component) {
         return createMotionComponent(Component, config);
     }
@@ -11444,14 +11327,7 @@ function createMotionProxy(defaultFeatures) {
  *
  * @public
  */
-var motion = /*@__PURE__*/ createMotionProxy([
-    MeasureLayout,
-    Animation,
-    Drag,
-    Gestures,
-    Exit,
-    AnimateLayout,
-]);
+var motion = /*@__PURE__*/ createMotionProxy(allMotionFeatures);
 
 function createSwitchAnimation(child, stack) {
     if (stack && child !== stack.lead) {
@@ -11898,6 +11774,12 @@ var StateVisualElement = /** @class */ (function (_super) {
     StateVisualElement.prototype.updateLayoutDelta = function () { };
     StateVisualElement.prototype.build = function () { };
     StateVisualElement.prototype.clean = function () { };
+    StateVisualElement.prototype.makeTargetAnimatable = function (_a) {
+        var transition = _a.transition, transitionEnd = _a.transitionEnd, target = __rest(_a, ["transition", "transitionEnd"]);
+        var origin = getOrigin(target, transition || {}, this);
+        checkTargetForNewValues(this, target, origin);
+        return __assign({ transition: transition, transitionEnd: transitionEnd }, target);
+    };
     StateVisualElement.prototype.getBoundingBox = function () {
         return { x: { min: 0, max: 0 }, y: { min: 0, max: 0 } };
     };
@@ -12038,7 +11920,7 @@ function _templateObject$4() {
 
   return data;
 }
-var CellBase = styled__default.div(_templateObject$4(), function (_ref) {
+var CellBase = styled__default['default'].div(_templateObject$4(), function (_ref) {
   var theme = _ref.theme,
       head = _ref.head;
   return theme[head ? 'headCells' : 'cells'].style;
@@ -12046,7 +11928,7 @@ var CellBase = styled__default.div(_templateObject$4(), function (_ref) {
   return props.noPadding && 'padding: 0';
 }); // Flex calculations
 
-var Cell = styled__default(CellBase)(_templateObject2$3(), function (props) {
+var Cell = styled__default['default'](CellBase)(_templateObject2$3(), function (props) {
   return props.column.grow === 0 || props.column.button ? 0 : props.column.grow || 1;
 }, function (props) {
   return props.column.maxWidth || '100%';
@@ -12079,7 +11961,7 @@ function _templateObject$5() {
 
   return data;
 }
-var TableCellStyle = styled__default(Cell)(_templateObject$5(), function (props) {
+var TableCellStyle = styled__default['default'](Cell)(_templateObject$5(), function (props) {
   return props.theme.rows.fontSize;
 }, function (props) {
   return props.column.wrap ? 'normal' : 'nowrap';
@@ -12090,7 +11972,7 @@ var TableCellStyle = styled__default(Cell)(_templateObject$5(), function (props)
 }, function (props) {
   return props.extendedCellStyle;
 });
-var TableCell = React.memo(function (_ref) {
+var TableCell = /*#__PURE__*/React.memo(function (_ref) {
   var id = _ref.id,
       column = _ref.column,
       row = _ref.row;
@@ -12102,14 +11984,14 @@ var TableCell = React.memo(function (_ref) {
 
   var dataTag = column.ignoreRowClick || column.button ? null : '___react-data-table-allow-propagation___';
   var extendedCellStyle = getConditionalStyle(row, column.conditionalCellStyles);
-  return /*#__PURE__*/React__default.createElement(TableCellStyle, {
+  return /*#__PURE__*/React__default['default'].createElement(TableCellStyle, {
     id: id,
     role: "cell",
     column: column,
     "data-tag": dataTag,
     className: "rdt_TableCell",
     extendedCellStyle: extendedCellStyle
-  }, !column.cell && /*#__PURE__*/React__default.createElement("div", {
+  }, !column.cell && /*#__PURE__*/React__default['default'].createElement("div", {
     "data-tag": dataTag
   }, getProperty(row, column.selector, column.format)), column.cell && column.cell(row));
 });
@@ -12132,7 +12014,7 @@ var calculateBaseStyle = function calculateBaseStyle(disabled) {
   });
 };
 
-var Checkbox = React.memo(function (_ref) {
+var Checkbox = /*#__PURE__*/React.memo(function (_ref) {
   var component = _ref.component,
       componentOptions = _ref.componentOptions,
       indeterminate = _ref.indeterminate,
@@ -12153,7 +12035,7 @@ var Checkbox = React.memo(function (_ref) {
   var resolvedComponentOptions = React.useMemo(function () {
     return handleFunctionProps(componentOptions, indeterminate);
   }, [componentOptions, indeterminate]);
-  return /*#__PURE__*/React__default.createElement(TagName // allow this component to fully control these options
+  return /*#__PURE__*/React__default['default'].createElement(TagName // allow this component to fully control these options
   , _extends({
     type: "checkbox",
     ref: setCheckboxRef,
@@ -12197,7 +12079,7 @@ function _templateObject$6() {
 
   return data;
 }
-var TableCellCheckboxStyle = styled__default(CellBase)(_templateObject$6());
+var TableCellCheckboxStyle = styled__default['default'](CellBase)(_templateObject$6());
 
 var TableCellCheckbox = function TableCellCheckbox(_ref) {
   var name = _ref.name,
@@ -12222,13 +12104,13 @@ var TableCellCheckbox = function TableCellCheckbox(_ref) {
       rowCount: data.length
     });
   }, [dispatch, row, selected, keyField, data.length]);
-  return /*#__PURE__*/React__default.createElement(TableCellCheckboxStyle, {
+  return /*#__PURE__*/React__default['default'].createElement(TableCellCheckboxStyle, {
     onClick: function onClick(e) {
       return e.stopPropagation();
     },
     className: "rdt_TableCell",
     noPadding: true
-  }, /*#__PURE__*/React__default.createElement(Checkbox, {
+  }, /*#__PURE__*/React__default['default'].createElement(Checkbox, {
     name: name,
     component: selectableRowsComponent,
     componentOptions: selectableRowsComponentProps,
@@ -12254,7 +12136,7 @@ function _templateObject$7() {
 
   return data;
 }
-var ButtonStyle = styled__default.button(_templateObject$7(), function (props) {
+var ButtonStyle = styled__default['default'].button(_templateObject$7(), function (props) {
   return props.theme.expanderButton.style;
 });
 
@@ -12274,7 +12156,7 @@ var ExpanderButton = function ExpanderButton(_ref) {
     return onToggled && onToggled(row, e);
   };
 
-  return /*#__PURE__*/React__default.createElement(ButtonStyle, {
+  return /*#__PURE__*/React__default['default'].createElement(ButtonStyle, {
     "aria-disabled": disabled,
     onClick: handleToggle,
     "data-testid": "expander-button-".concat(row[keyField]),
@@ -12305,7 +12187,7 @@ function _templateObject$8() {
 
   return data;
 }
-var TableCellExpanderStyle = styled__default(CellBase)(_templateObject$8(), function (props) {
+var TableCellExpanderStyle = styled__default['default'](CellBase)(_templateObject$8(), function (props) {
   return props.theme.expanderCell.style;
 });
 
@@ -12315,13 +12197,13 @@ var TableCellExpander = function TableCellExpander(_ref) {
       expanded = _ref.expanded,
       onRowExpandToggled = _ref.onRowExpandToggled,
       disabled = _ref.disabled;
-  return /*#__PURE__*/React__default.createElement(TableCellExpanderStyle, {
+  return /*#__PURE__*/React__default['default'].createElement(TableCellExpanderStyle, {
     column: column,
     onClick: function onClick(e) {
       return e.stopPropagation();
     },
     noPadding: true
-  }, /*#__PURE__*/React__default.createElement(ExpanderButton, {
+  }, /*#__PURE__*/React__default['default'].createElement(ExpanderButton, {
     onToggled: onRowExpandToggled,
     row: row,
     expanded: expanded,
@@ -12356,13 +12238,13 @@ function _templateObject$9() {
 
 var renderChildren = function renderChildren(children, data) {
   return React.Children.map(children, function (child) {
-    return React.cloneElement(child, {
+    return /*#__PURE__*/React.cloneElement(child, {
       data: data
     });
   });
 };
 
-var ExpanderRowStyle = styled__default.div(_templateObject$9(), function (props) {
+var ExpanderRowStyle = styled__default['default'].div(_templateObject$9(), function (props) {
   return props.theme.expanderRow.style;
 }, function (props) {
   return props.extendedRowStyle;
@@ -12372,7 +12254,7 @@ var ExpanderRow = function ExpanderRow(_ref) {
   var data = _ref.data,
       children = _ref.children,
       extendedRowStyle = _ref.extendedRowStyle;
-  return /*#__PURE__*/React__default.createElement(ExpanderRowStyle, {
+  return /*#__PURE__*/React__default['default'].createElement(ExpanderRowStyle, {
     className: "rdt_ExpanderRow",
     extendedRowStyle: extendedRowStyle
   }, renderChildren(children, data));
@@ -12423,7 +12305,7 @@ var highlightCSS = styled.css(_templateObject$a(), function (props) {
   return props.highlightOnHover && props.theme.rows.highlightOnHoverStyle;
 });
 var pointerCSS = styled.css(_templateObject2$4());
-var TableRowStyle = styled__default(motion.div)(_templateObject3$2(), function (props) {
+var TableRowStyle = styled__default['default'](motion.div)(_templateObject3$2(), function (props) {
   return props.theme.rows.style;
 }, function (props) {
   return props.dense && props.theme.rows.denseStyle;
@@ -12438,7 +12320,7 @@ var TableRowStyle = styled__default(motion.div)(_templateObject3$2(), function (
 }, function (props) {
   return props.extendedRowStyle;
 });
-var TableRow = React.memo(function (_ref) {
+var TableRow = /*#__PURE__*/React.memo(function (_ref) {
   var id = _ref.id,
       keyField = _ref.keyField,
       columns = _ref.columns,
@@ -12507,7 +12389,7 @@ var TableRow = React.memo(function (_ref) {
   var extendedRowStyle = getConditionalStyle(row, conditionalRowStyles);
   var hightlightSelected = selectableRowsHighlight && selected;
   var inheritStyles = inheritConditionalStyles ? extendedRowStyle : null;
-  return /*#__PURE__*/React__default.createElement(React__default.Fragment, null, /*#__PURE__*/React__default.createElement(TableRowStyle, {
+  return /*#__PURE__*/React__default['default'].createElement(React__default['default'].Fragment, null, /*#__PURE__*/React__default['default'].createElement(TableRowStyle, {
     id: "row-".concat(id),
     role: "row",
     striped: striped,
@@ -12530,23 +12412,23 @@ var TableRow = React.memo(function (_ref) {
     className: "rdt_TableRow",
     extendedRowStyle: extendedRowStyle,
     selected: hightlightSelected
-  }, selectableRows && /*#__PURE__*/React__default.createElement(TableCellCheckbox, {
+  }, selectableRows && /*#__PURE__*/React__default['default'].createElement(TableCellCheckbox, {
     name: "select-row-".concat(row[keyField]),
     row: row,
     selected: selected
   }), columns.map(function (column) {
-    return /*#__PURE__*/React__default.createElement(TableCell, {
+    return /*#__PURE__*/React__default['default'].createElement(TableCell, {
       id: "cell-".concat(column.id, "-").concat(row[keyField]),
       key: "cell-".concat(column.id, "-").concat(row[keyField]),
       column: column,
       row: row
     });
-  }), expandableRows && !expandableRowsHideExpander && /*#__PURE__*/React__default.createElement(TableCellExpander, {
+  }), expandableRows && !expandableRowsHideExpander && /*#__PURE__*/React__default['default'].createElement(TableCellExpander, {
     expanded: expanded,
     row: row,
     onRowExpandToggled: handleExpanded,
     disabled: defaultExpanderDisabled
-  })), expandableRows && expanded && /*#__PURE__*/React__default.createElement(ExpanderRow, {
+  })), expandableRows && expanded && /*#__PURE__*/React__default['default'].createElement(ExpanderRow, {
     key: "expander--".concat(row[keyField]),
     data: row,
     extendedRowStyle: inheritStyles
@@ -12594,7 +12476,7 @@ function _templateObject$b() {
 
   return data;
 }
-var Icon = styled__default.span(_templateObject$b(), function (props) {
+var Icon = styled__default['default'].span(_templateObject$b(), function (props) {
   return props.sortActive ? 'opacity: 1' : 'opacity: 0';
 }, function (props) {
   return props.sortDirection === 'desc' && 'transform: rotate(180deg)';
@@ -12604,7 +12486,7 @@ var NativeSortIcon = function NativeSortIcon(_ref) {
   var sortActive = _ref.sortActive,
       sortDirection = _ref.sortDirection,
       sortIcon = _ref.sortIcon;
-  return /*#__PURE__*/React__default.createElement(Icon, {
+  return /*#__PURE__*/React__default['default'].createElement(Icon, {
     sortActive: sortActive,
     sortDirection: sortDirection
   }, sortIcon);
@@ -12617,7 +12499,7 @@ NativeSortIcon.propTypes = {
 };
 NativeSortIcon.defaultProps = {
   sortActive: true,
-  sortIcon: /*#__PURE__*/React__default.createElement(React__default.Fragment, null, "\u25B2")
+  sortIcon: /*#__PURE__*/React__default['default'].createElement(React__default['default'].Fragment, null, "\u25B2")
 };
 
 function _templateObject2$5() {
@@ -12639,10 +12521,10 @@ function _templateObject$c() {
 
   return data;
 }
-var TableColStyle = styled__default(Cell)(_templateObject$c(), function (props) {
+var TableColStyle = styled__default['default'](Cell)(_templateObject$c(), function (props) {
   return props.column.button && 'text-align: center';
 });
-var ColumnSortable = styled__default.div(_templateObject2$5(), function (props) {
+var ColumnSortable = styled__default['default'].div(_templateObject2$5(), function (props) {
   return props.sortActive ? props.theme.headCells.activeSortStyle : props.theme.headCells.inactiveSortStyle;
 }, function (props) {
   return props.sortActive ? 'opacity: 1' : 'opacity: 1';
@@ -12658,7 +12540,7 @@ var ColumnSortable = styled__default.div(_templateObject2$5(), function (props) 
       column = _ref3.column;
   return !sortActive && column.sortable && 'opacity: 1';
 });
-var TableCol = React.memo(function (_ref4) {
+var TableCol = /*#__PURE__*/React.memo(function (_ref4) {
   var column = _ref4.column,
       sortIcon = _ref4.sortIcon;
 
@@ -12706,7 +12588,7 @@ var TableCol = React.memo(function (_ref4) {
   };
 
   var renderNativeSortIcon = function renderNativeSortIcon(sortActive) {
-    return /*#__PURE__*/React__default.createElement(NativeSortIcon, {
+    return /*#__PURE__*/React__default['default'].createElement(NativeSortIcon, {
       column: column,
       sortActive: sortActive,
       sortDirection: sortDirection
@@ -12714,7 +12596,7 @@ var TableCol = React.memo(function (_ref4) {
   };
 
   var renderCustomSortIcon = function renderCustomSortIcon() {
-    return /*#__PURE__*/React__default.createElement("span", {
+    return /*#__PURE__*/React__default['default'].createElement("span", {
       className: [sortDirection, '__rdt_custom_sort_icon__'].join(' ')
     }, sortIcon);
   };
@@ -12724,12 +12606,12 @@ var TableCol = React.memo(function (_ref4) {
   var nativeSortIconRight = column.sortable && !sortIcon && column.right;
   var customSortIconLeft = column.sortable && sortIcon && !column.right;
   var customSortIconRight = column.sortable && sortIcon && column.right;
-  return /*#__PURE__*/React__default.createElement(TableColStyle, {
+  return /*#__PURE__*/React__default['default'].createElement(TableColStyle, {
     className: "rdt_TableCol",
     column: column // required by Cell.js
     ,
     head: true
-  }, column.name && /*#__PURE__*/React__default.createElement(ColumnSortable, {
+  }, column.name && /*#__PURE__*/React__default['default'].createElement(ColumnSortable, {
     id: "column-".concat(column.selector),
     role: "button",
     "aria-pressed": sortActive,
@@ -12739,7 +12621,7 @@ var TableCol = React.memo(function (_ref4) {
     onKeyPress: handleKeyPress,
     sortActive: sortActive,
     column: column
-  }, customSortIconRight && renderCustomSortIcon(), nativeSortIconRight && renderNativeSortIcon(sortActive), /*#__PURE__*/React__default.createElement("div", null, column.name), customSortIconLeft && renderCustomSortIcon(), nativeSortIconLeft && renderNativeSortIcon(sortActive)));
+  }, customSortIconRight && renderCustomSortIcon(), nativeSortIconRight && renderNativeSortIcon(sortActive), /*#__PURE__*/React__default['default'].createElement("div", null, column.name), customSortIconLeft && renderCustomSortIcon(), nativeSortIconLeft && renderNativeSortIcon(sortActive)));
 });
 TableCol.propTypes = {
   column: propTypes.object.isRequired,
@@ -12755,7 +12637,7 @@ function _templateObject$d() {
 
   return data;
 }
-var TableColStyle$1 = styled__default(CellBase)(_templateObject$d());
+var TableColStyle$1 = styled__default['default'](CellBase)(_templateObject$d());
 
 var TableColCheckbox = function TableColCheckbox(_ref) {
   var head = _ref.head;
@@ -12775,8 +12657,9 @@ var TableColCheckbox = function TableColCheckbox(_ref) {
   var rows = selectableRowDisabled ? data.filter(function (row) {
     return !selectableRowDisabled(row);
   }) : data;
-  var isDisabled = rows.length === 0;
-  var rowCount = data.length;
+  var isDisabled = rows.length === 0; // The row count should subtrtact rows that are disabled
+
+  var rowCount = Math.min(data.length, rows.length);
   var handleSelectAll = React.useCallback(function () {
     return dispatch({
       type: 'SELECT_ALL_ROWS',
@@ -12786,11 +12669,11 @@ var TableColCheckbox = function TableColCheckbox(_ref) {
       keyField: keyField
     });
   }, [dispatch, keyField, mergeSelections, rowCount, rows]);
-  return /*#__PURE__*/React__default.createElement(TableColStyle$1, {
+  return /*#__PURE__*/React__default['default'].createElement(TableColStyle$1, {
     className: "rdt_TableCol",
     head: head,
     noPadding: true
-  }, /*#__PURE__*/React__default.createElement(Checkbox, {
+  }, /*#__PURE__*/React__default['default'].createElement(Checkbox, {
     name: "select-all-rows",
     component: selectableRowsComponent,
     componentOptions: selectableRowsComponentProps,
@@ -12837,13 +12720,13 @@ function _templateObject$e() {
 
   return data;
 }
-var Title = styled__default.div(_templateObject$e(), function (props) {
+var Title = styled__default['default'].div(_templateObject$e(), function (props) {
   return props.theme.contextMenu.fontColor;
 }, function (props) {
   return props.theme.contextMenu.fontSize;
 });
-var ContextActions = styled__default.div(_templateObject2$6());
-var ContextMenuStyle = styled__default.div(_templateObject3$3(), function (props) {
+var ContextActions = styled__default['default'].div(_templateObject2$6());
+var ContextMenuStyle = styled__default['default'].div(_templateObject3$3(), function (props) {
   return props.theme.contextMenu.style;
 }, function (props) {
   return props.visible && props.theme.contextMenu.activeStyle;
@@ -12874,16 +12757,16 @@ var ContextMenu = function ContextMenu() {
   var visible = selectedCount > 0;
 
   if (contextComponent) {
-    return /*#__PURE__*/React__default.createElement(ContextMenuStyle, {
+    return /*#__PURE__*/React__default['default'].createElement(ContextMenuStyle, {
       visible: visible
-    }, React.cloneElement(contextComponent, {
+    }, /*#__PURE__*/React.cloneElement(contextComponent, {
       selectedCount: selectedCount
     }));
   }
 
-  return /*#__PURE__*/React__default.createElement(ContextMenuStyle, {
+  return /*#__PURE__*/React__default['default'].createElement(ContextMenuStyle, {
     visible: visible
-  }, /*#__PURE__*/React__default.createElement(Title, null, generateDefaultContextTitle(contextMessage, selectedCount, direction)), /*#__PURE__*/React__default.createElement(ContextActions, null, contextActions));
+  }, /*#__PURE__*/React__default['default'].createElement(Title, null, generateDefaultContextTitle(contextMessage, selectedCount, direction)), /*#__PURE__*/React__default['default'].createElement(ContextActions, null, contextActions));
 };
 
 function _templateObject3$4() {
@@ -12915,23 +12798,23 @@ function _templateObject$f() {
 
   return data;
 }
-var TableHeaderStyle = styled__default.header(_templateObject$f(), function (props) {
+var TableHeaderStyle = styled__default['default'].header(_templateObject$f(), function (props) {
   return props.theme.header.style;
 });
-var Title$1 = styled__default.div(_templateObject2$7(), function (props) {
+var Title$1 = styled__default['default'].div(_templateObject2$7(), function (props) {
   return props.theme.header.fontColor;
 }, function (props) {
   return props.theme.header.fontSize;
 });
-var Actions = styled__default.div(_templateObject3$4());
+var Actions = styled__default['default'].div(_templateObject3$4());
 
 var TableHeader = function TableHeader(_ref) {
   var title = _ref.title,
       actions = _ref.actions,
       showMenu = _ref.showMenu;
-  return /*#__PURE__*/React__default.createElement(TableHeaderStyle, {
+  return /*#__PURE__*/React__default['default'].createElement(TableHeaderStyle, {
     className: "rdt_TableHeader"
-  }, /*#__PURE__*/React__default.createElement(Title$1, null, title), /*#__PURE__*/React__default.createElement(Actions, null, actions), showMenu && /*#__PURE__*/React__default.createElement(ContextMenu, null));
+  }, /*#__PURE__*/React__default['default'].createElement(Title$1, null, title), /*#__PURE__*/React__default['default'].createElement(Actions, null, actions), showMenu && /*#__PURE__*/React__default['default'].createElement(ContextMenu, null));
 };
 
 TableHeader.propTypes = {
@@ -12958,7 +12841,7 @@ var alignMap = {
   right: 'flex-end',
   center: 'center'
 };
-var SubheaderWrapper = styled__default.header(_templateObject$g(), function (props) {
+var SubheaderWrapper = styled__default['default'].header(_templateObject$g(), function (props) {
   return alignMap[props.align];
 }, function (props) {
   return props.wrapContent ? 'wrap' : 'nowrap';
@@ -12971,7 +12854,7 @@ var TableSubheader = function TableSubheader(_ref) {
       wrapContent = _ref.wrapContent,
       onDrop = _ref.onDrop,
       children = _ref.children;
-  return /*#__PURE__*/React__default.createElement(SubheaderWrapper, {
+  return /*#__PURE__*/React__default['default'].createElement(SubheaderWrapper, {
     align: align,
     wrapContent: wrapContent,
     onDragOver: function onDragOver(e) {
@@ -13013,7 +12896,7 @@ function _templateObject$h() {
 
   return data;
 }
-var TableBody = styled__default.div(_templateObject$h(), function (_ref) {
+var TableBody = styled__default['default'].div(_templateObject$h(), function (_ref) {
   var fixedHeader = _ref.fixedHeader,
       hasOffset = _ref.hasOffset,
       offset = _ref.offset,
@@ -13060,7 +12943,7 @@ function _templateObject$i() {
   https://www.brunildo.org/test/Overflowxy2.html
 */
 
-var ResponsiveWrapper = styled__default.div(_templateObject$i(), function (props) {
+var ResponsiveWrapper = styled__default['default'].div(_templateObject$i(), function (props) {
   return props.responsive && styled.css(_templateObject2$9());
 }, function (props) {
   return props.overflowY && props.responsive && props.overflowYOffset && styled.css(_templateObject3$5(), props.overflowYOffset, props.overflowYOffset);
@@ -13075,13 +12958,13 @@ function _templateObject$j() {
 
   return data;
 }
-var ProgressWrapperStyle = styled__default.div(_templateObject$j(), function (props) {
+var ProgressWrapperStyle = styled__default['default'].div(_templateObject$j(), function (props) {
   return props.theme.progress.style;
 });
 
 var ProgressWrapper = function ProgressWrapper(_ref) {
   var children = _ref.children;
-  return /*#__PURE__*/React__default.createElement(ProgressWrapperStyle, null, children);
+  return /*#__PURE__*/React__default['default'].createElement(ProgressWrapperStyle, null, children);
 };
 
 ProgressWrapper.propTypes = {
@@ -13097,7 +12980,7 @@ function _templateObject$k() {
 
   return data;
 }
-var TableWrapper = styled__default.div(_templateObject$k(), function (props) {
+var TableWrapper = styled__default['default'].div(_templateObject$k(), function (props) {
   return props.theme.tableWrapper.style;
 });
 
@@ -13110,7 +12993,7 @@ function _templateObject$l() {
 
   return data;
 }
-var TableColExpander = styled__default(CellBase)(_templateObject$l(), function (props) {
+var TableColExpander = styled__default['default'](CellBase)(_templateObject$l(), function (props) {
   return props.theme.expanderCell.style;
 });
 
@@ -13123,13 +13006,13 @@ function _templateObject$m() {
 
   return data;
 }
-var NoDataWrapperStyle = styled__default.div(_templateObject$m(), function (props) {
+var NoDataWrapperStyle = styled__default['default'].div(_templateObject$m(), function (props) {
   return props.theme.noData.style;
 });
 
 var NoDataWrapper = function NoDataWrapper(_ref) {
   var children = _ref.children;
-  return /*#__PURE__*/React__default.createElement(NoDataWrapperStyle, null, children);
+  return /*#__PURE__*/React__default['default'].createElement(NoDataWrapperStyle, null, children);
 };
 
 NoDataWrapper.propTypes = {
@@ -13137,14 +13020,14 @@ NoDataWrapper.propTypes = {
 };
 
 var DropDownIcon = (function () {
-  return /*#__PURE__*/React__default.createElement("svg", {
+  return /*#__PURE__*/React__default['default'].createElement("svg", {
     xmlns: "http://www.w3.org/2000/svg",
     width: "24",
     height: "24",
     viewBox: "0 0 24 24"
-  }, /*#__PURE__*/React__default.createElement("path", {
+  }, /*#__PURE__*/React__default['default'].createElement("path", {
     d: "M7 10l5 5 5-5z"
-  }), /*#__PURE__*/React__default.createElement("path", {
+  }), /*#__PURE__*/React__default['default'].createElement("path", {
     d: "M0 0h24v24H0z",
     fill: "none"
   }));
@@ -13161,7 +13044,7 @@ function _templateObject2$a() {
 }
 
 function _templateObject$n() {
-  var data = _taggedTemplateLiteral(["\n  cursor: pointer;\n  height: 24px;\n  min-width: 24px;\n  user-select: none;\n  padding-left: 8px;\n  padding-right: 12px;\n  box-sizing: content-box;\n  font-size: inherit;\n  color: inherit;\n  border: none;\n  background-color: transparent;\n  appearance: none;\n  direction: ltr;\n\n  &::-ms-expand {\n    display: none;\n  }\n\n  &:disabled::-ms-expand {\n    background: #f60;\n  }\n"]);
+  var data = _taggedTemplateLiteral(["\n  cursor: pointer;\n  height: 24px;\n  min-width: 24px;\n  user-select: none;\n  padding-left: 8px;\n  padding-right: 12px;\n  box-sizing: content-box;\n  font-size: inherit;\n  color: inherit;\n  border: none;\n  background-color: transparent;\n  appearance: none;\n  direction: ltr;\n\n  &::-ms-expand {\n    display: none;\n  }\n\n  &:disabled::-ms-expand {\n    background: #f60;\n  }\n\n  option {\n    color: initial;\n  }\n  \n"]);
 
   _templateObject$n = function _templateObject() {
     return data;
@@ -13169,11 +13052,11 @@ function _templateObject$n() {
 
   return data;
 }
-var SelectControl = styled__default.select(_templateObject$n());
-var SelectWrapper = styled__default.div(_templateObject2$a());
+var SelectControl = styled__default['default'].select(_templateObject$n());
+var SelectWrapper = styled__default['default'].div(_templateObject2$a());
 
 var Select = function Select(props) {
-  return /*#__PURE__*/React__default.createElement(SelectWrapper, null, /*#__PURE__*/React__default.createElement(SelectControl, props), /*#__PURE__*/React__default.createElement(DropDownIcon, null));
+  return /*#__PURE__*/React__default['default'].createElement(SelectWrapper, null, /*#__PURE__*/React__default['default'].createElement(SelectControl, props), /*#__PURE__*/React__default['default'].createElement(DropDownIcon, null));
 };
 
 function useWindowSize() {
@@ -13285,18 +13168,18 @@ var defaultComponentOptions = {
   selectAllRowsItem: false,
   selectAllRowsItemText: 'All'
 };
-var PaginationWrapper = styled__default.nav(_templateObject$o(), function (props) {
+var PaginationWrapper = styled__default['default'].nav(_templateObject$o(), function (props) {
   return props.theme.pagination.style;
 });
-var Button = styled__default.button(_templateObject2$b(), function (props) {
+var Button = styled__default['default'].button(_templateObject2$b(), function (props) {
   return props.theme.pagination.pageButtonsStyle;
 }, function (props) {
   return props.isRTL && 'transform: scale(-1, -1)';
 });
-var PageList = styled__default.div(_templateObject3$6(), media.sm(_templateObject4$2()));
-var Span = styled__default.span(_templateObject5$1());
-var Range = styled__default(Span)(_templateObject6$1());
-var RowLabel = styled__default(Span)(_templateObject7$1());
+var PageList = styled__default['default'].div(_templateObject3$6(), media.sm(_templateObject4$2()));
+var Span = styled__default['default'].span(_templateObject5$1());
+var Range = styled__default['default'](Span)(_templateObject6$1());
+var RowLabel = styled__default['default'](Span)(_templateObject7$1());
 
 var Pagination = function Pagination(_ref) {
   var rowsPerPage = _ref.rowsPerPage,
@@ -13343,26 +13226,26 @@ var Pagination = function Pagination(_ref) {
     return onChangeRowsPerPage(Number(target.value), currentPage);
   }, [currentPage, onChangeRowsPerPage]);
   var selectOptions = paginationRowsPerPageOptions.map(function (num) {
-    return /*#__PURE__*/React__default.createElement("option", {
+    return /*#__PURE__*/React__default['default'].createElement("option", {
       key: num,
       value: num
     }, num);
   });
 
   if (options.selectAllRowsItem) {
-    selectOptions.push( /*#__PURE__*/React__default.createElement("option", {
+    selectOptions.push( /*#__PURE__*/React__default['default'].createElement("option", {
       key: -1,
       value: rowCount
     }, options.selectAllRowsItemText));
   }
 
-  var select = /*#__PURE__*/React__default.createElement(Select, {
+  var select = /*#__PURE__*/React__default['default'].createElement(Select, {
     onChange: handleRowsPerPage,
     defaultValue: rowsPerPage
   }, selectOptions);
-  return /*#__PURE__*/React__default.createElement(PaginationWrapper, {
+  return /*#__PURE__*/React__default['default'].createElement(PaginationWrapper, {
     className: "rdt_Pagination"
-  }, !options.noRowsPerPage && shouldShow && /*#__PURE__*/React__default.createElement(React__default.Fragment, null, /*#__PURE__*/React__default.createElement(RowLabel, null, options.rowsPerPageText), select), shouldShow && /*#__PURE__*/React__default.createElement(Range, null, range), /*#__PURE__*/React__default.createElement(PageList, null, /*#__PURE__*/React__default.createElement(Button, {
+  }, !options.noRowsPerPage && shouldShow && /*#__PURE__*/React__default['default'].createElement(React__default['default'].Fragment, null, /*#__PURE__*/React__default['default'].createElement(RowLabel, null, options.rowsPerPageText), select), shouldShow && /*#__PURE__*/React__default['default'].createElement(Range, null, range), /*#__PURE__*/React__default['default'].createElement(PageList, null, /*#__PURE__*/React__default['default'].createElement(Button, {
     id: "pagination-first-page",
     type: "button",
     "aria-label": "First Page",
@@ -13370,7 +13253,7 @@ var Pagination = function Pagination(_ref) {
     onClick: handleFirst,
     disabled: disabledLesser,
     isRTL: isRTL
-  }, paginationIconFirstPage), /*#__PURE__*/React__default.createElement(Button, {
+  }, paginationIconFirstPage), /*#__PURE__*/React__default['default'].createElement(Button, {
     id: "pagination-previous-page",
     type: "button",
     "aria-label": "Previous Page",
@@ -13378,7 +13261,7 @@ var Pagination = function Pagination(_ref) {
     onClick: handlePrevious,
     disabled: disabledLesser,
     isRTL: isRTL
-  }, paginationIconPrevious), !shouldShow && select, /*#__PURE__*/React__default.createElement(Button, {
+  }, paginationIconPrevious), !shouldShow && select, /*#__PURE__*/React__default['default'].createElement(Button, {
     id: "pagination-next-page",
     type: "button",
     "aria-label": "Next Page",
@@ -13386,7 +13269,7 @@ var Pagination = function Pagination(_ref) {
     onClick: handleNext,
     disabled: disabledGreater,
     isRTL: isRTL
-  }, paginationIconNext), /*#__PURE__*/React__default.createElement(Button, {
+  }, paginationIconNext), /*#__PURE__*/React__default['default'].createElement(Button, {
     id: "pagination-last-page",
     type: "button",
     "aria-label": "Last Page",
@@ -13418,94 +13301,94 @@ function useFirstUpdate(fn, inputs) {
 }
 
 var FirstPageIcon = (function () {
-  return /*#__PURE__*/React__default.createElement("svg", {
+  return /*#__PURE__*/React__default['default'].createElement("svg", {
     xmlns: "http://www.w3.org/2000/svg",
     width: "24",
     height: "24",
     viewBox: "0 0 24 24",
     "aria-hidden": "true",
     role: "presentation"
-  }, /*#__PURE__*/React__default.createElement("path", {
+  }, /*#__PURE__*/React__default['default'].createElement("path", {
     d: "M18.41 16.59L13.82 12l4.59-4.59L17 6l-6 6 6 6zM6 6h2v12H6z"
-  }), /*#__PURE__*/React__default.createElement("path", {
+  }), /*#__PURE__*/React__default['default'].createElement("path", {
     fill: "none",
     d: "M24 24H0V0h24v24z"
   }));
 });
 
 var LastPageIcon = (function () {
-  return /*#__PURE__*/React__default.createElement("svg", {
+  return /*#__PURE__*/React__default['default'].createElement("svg", {
     xmlns: "http://www.w3.org/2000/svg",
     width: "24",
     height: "24",
     viewBox: "0 0 24 24",
     "aria-hidden": "true",
     role: "presentation"
-  }, /*#__PURE__*/React__default.createElement("path", {
+  }, /*#__PURE__*/React__default['default'].createElement("path", {
     d: "M5.59 7.41L10.18 12l-4.59 4.59L7 18l6-6-6-6zM16 6h2v12h-2z"
-  }), /*#__PURE__*/React__default.createElement("path", {
+  }), /*#__PURE__*/React__default['default'].createElement("path", {
     fill: "none",
     d: "M0 0h24v24H0V0z"
   }));
 });
 
 var LeftIcon = (function () {
-  return /*#__PURE__*/React__default.createElement("svg", {
+  return /*#__PURE__*/React__default['default'].createElement("svg", {
     xmlns: "http://www.w3.org/2000/svg",
     width: "24",
     height: "24",
     viewBox: "0 0 24 24",
     "aria-hidden": "true",
     role: "presentation"
-  }, /*#__PURE__*/React__default.createElement("path", {
+  }, /*#__PURE__*/React__default['default'].createElement("path", {
     d: "M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"
-  }), /*#__PURE__*/React__default.createElement("path", {
+  }), /*#__PURE__*/React__default['default'].createElement("path", {
     d: "M0 0h24v24H0z",
     fill: "none"
   }));
 });
 
 var RightIcon = (function () {
-  return /*#__PURE__*/React__default.createElement("svg", {
+  return /*#__PURE__*/React__default['default'].createElement("svg", {
     xmlns: "http://www.w3.org/2000/svg",
     width: "24",
     height: "24",
     viewBox: "0 0 24 24",
     "aria-hidden": "true",
     role: "presentation"
-  }, /*#__PURE__*/React__default.createElement("path", {
+  }, /*#__PURE__*/React__default['default'].createElement("path", {
     d: "M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"
-  }), /*#__PURE__*/React__default.createElement("path", {
+  }), /*#__PURE__*/React__default['default'].createElement("path", {
     d: "M0 0h24v24H0z",
     fill: "none"
   }));
 });
 
 var ExpanderCollapsedIcon = (function () {
-  return /*#__PURE__*/React__default.createElement("svg", {
+  return /*#__PURE__*/React__default['default'].createElement("svg", {
     fill: "currentColor",
     height: "24",
     viewBox: "0 0 24 24",
     width: "24",
     xmlns: "http://www.w3.org/2000/svg"
-  }, /*#__PURE__*/React__default.createElement("path", {
+  }, /*#__PURE__*/React__default['default'].createElement("path", {
     d: "M8.59 16.34l4.58-4.59-4.58-4.59L10 5.75l6 6-6 6z"
-  }), /*#__PURE__*/React__default.createElement("path", {
+  }), /*#__PURE__*/React__default['default'].createElement("path", {
     d: "M0-.25h24v24H0z",
     fill: "none"
   }));
 });
 
 var ExpanderExpandedIcon = (function () {
-  return /*#__PURE__*/React__default.createElement("svg", {
+  return /*#__PURE__*/React__default['default'].createElement("svg", {
     fill: "currentColor",
     height: "24",
     viewBox: "0 0 24 24",
     width: "24",
     xmlns: "http://www.w3.org/2000/svg"
-  }, /*#__PURE__*/React__default.createElement("path", {
+  }, /*#__PURE__*/React__default['default'].createElement("path", {
     d: "M7.41 7.84L12 12.42l4.59-4.58L18 9.25l-6 6-6-6z"
-  }), /*#__PURE__*/React__default.createElement("path", {
+  }), /*#__PURE__*/React__default['default'].createElement("path", {
     d: "M0-.75h24v24H0z",
     fill: "none"
   }));
@@ -13630,7 +13513,7 @@ var defaultProps = {
     return null;
   },
   progressPending: false,
-  progressComponent: /*#__PURE__*/React__default.createElement("div", {
+  progressComponent: /*#__PURE__*/React__default['default'].createElement("div", {
     style: {
       fontSize: '24px',
       fontWeight: 700,
@@ -13638,14 +13521,14 @@ var defaultProps = {
     }
   }, "Loading..."),
   persistTableHead: false,
-  expandableRowsComponent: /*#__PURE__*/React__default.createElement("div", {
+  expandableRowsComponent: /*#__PURE__*/React__default['default'].createElement("div", {
     style: {
       padding: '24px'
     }
   }, "Add a custom expander component. Use props.data for row data"),
   expandableIcon: {
-    collapsed: /*#__PURE__*/React__default.createElement(ExpanderCollapsedIcon, null),
-    expanded: /*#__PURE__*/React__default.createElement(ExpanderExpandedIcon, null)
+    collapsed: /*#__PURE__*/React__default['default'].createElement(ExpanderCollapsedIcon, null),
+    expanded: /*#__PURE__*/React__default['default'].createElement(ExpanderExpandedIcon, null)
   },
   sortIcon: false,
   sortFunction: null,
@@ -13673,7 +13556,7 @@ var defaultProps = {
   responsive: true,
   overflowY: false,
   overflowYOffset: '250px',
-  noDataComponent: /*#__PURE__*/React__default.createElement("div", {
+  noDataComponent: /*#__PURE__*/React__default['default'].createElement("div", {
     style: {
       padding: '24px'
     }
@@ -13712,10 +13595,10 @@ var defaultProps = {
   },
   paginationComponent: null,
   paginationComponentOptions: {},
-  paginationIconFirstPage: /*#__PURE__*/React__default.createElement(FirstPageIcon, null),
-  paginationIconLastPage: /*#__PURE__*/React__default.createElement(LastPageIcon, null),
-  paginationIconNext: /*#__PURE__*/React__default.createElement(RightIcon, null),
-  paginationIconPrevious: /*#__PURE__*/React__default.createElement(LeftIcon, null),
+  paginationIconFirstPage: /*#__PURE__*/React__default['default'].createElement(FirstPageIcon, null),
+  paginationIconLastPage: /*#__PURE__*/React__default['default'].createElement(LastPageIcon, null),
+  paginationIconNext: /*#__PURE__*/React__default['default'].createElement(RightIcon, null),
+  paginationIconPrevious: /*#__PURE__*/React__default['default'].createElement(LeftIcon, null),
   dense: false,
   conditionalRowStyles: [],
   theme: 'default',
@@ -14175,7 +14058,7 @@ var createStyles = function createStyles() {
   return cjs(defaultStyles(defaultThemes[themeType]), customStyles);
 };
 
-var DataTable = React.memo(function (_ref) {
+var DataTable = /*#__PURE__*/React.memo(function (_ref) {
   var data = _ref.data,
       columns = _ref.columns,
       title = _ref.title,
@@ -14186,6 +14069,7 @@ var DataTable = React.memo(function (_ref) {
       pointerOnHover = _ref.pointerOnHover,
       dense = _ref.dense,
       draggable = _ref.draggable,
+      dragRowDisabled = _ref.dragRowDisabled,
       selectableRows = _ref.selectableRows,
       selectableRowsHighlight = _ref.selectableRowsHighlight,
       selectableRowsNoSelectAll = _ref.selectableRowsNoSelectAll,
@@ -14485,56 +14369,56 @@ var DataTable = React.memo(function (_ref) {
   };
 
   var showSelectAll = persistSelectedOnPageChange || selectableRowsNoSelectAll;
-  return /*#__PURE__*/React__default.createElement(styled.ThemeProvider, {
+  return /*#__PURE__*/React__default['default'].createElement(styled.ThemeProvider, {
     theme: currentTheme
-  }, /*#__PURE__*/React__default.createElement(DataTableProvider, {
+  }, /*#__PURE__*/React__default['default'].createElement(DataTableProvider, {
     initialState: init
-  }, /*#__PURE__*/React__default.createElement(ResponsiveWrapper, _extends({
+  }, /*#__PURE__*/React__default['default'].createElement(ResponsiveWrapper, _extends({
     responsive: responsive,
     className: className,
     style: style,
     overflowYOffset: overflowYOffset,
     overflowY: overflowY
-  }, wrapperProps), enabledPagination && /*#__PURE__*/React__default.createElement(Pagination$1, {
+  }, wrapperProps), enabledPagination && /*#__PURE__*/React__default['default'].createElement(Pagination$1, {
     onChangePage: handleChangePage,
     onChangeRowsPerPage: handleChangeRowsPerPage,
     rowCount: paginationTotalRows || data.length,
     currentPage: currentPage,
     rowsPerPage: rowsPerPage
-  }), !noHeader && /*#__PURE__*/React__default.createElement(TableHeader, {
+  }), !noHeader && /*#__PURE__*/React__default['default'].createElement(TableHeader, {
     title: title,
     actions: actions,
     showMenu: !noContextMenu
-  }), /*#__PURE__*/React__default.createElement(TableWrapper, null, /*#__PURE__*/React__default.createElement(TableStyle, {
+  }), /*#__PURE__*/React__default['default'].createElement(TableWrapper, null, /*#__PURE__*/React__default['default'].createElement(TableStyle, {
     disabled: disabled,
     className: "rdt_Table",
     role: "table"
-  }, showTableHead() && /*#__PURE__*/React__default.createElement(TableHead, {
+  }, showTableHead() && /*#__PURE__*/React__default['default'].createElement(TableHead, {
     className: "rdt_TableHead",
     role: "rowgroup"
-  }, /*#__PURE__*/React__default.createElement(TableHeadRow, {
+  }, /*#__PURE__*/React__default['default'].createElement(TableHeadRow, {
     className: "rdt_TableHeadRow",
     role: "row",
     dense: dense,
     disabled: progressPending || data.length === 0
-  }, selectableRows && (showSelectAll ? /*#__PURE__*/React__default.createElement(CellBase, {
+  }, selectableRows && (showSelectAll ? /*#__PURE__*/React__default['default'].createElement(CellBase, {
     style: {
       flex: '0 0 48px'
     },
     role: "columnheader"
-  }) : /*#__PURE__*/React__default.createElement(TableColCheckbox, {
+  }) : /*#__PURE__*/React__default['default'].createElement(TableColCheckbox, {
     role: "columnheader"
-  })), expandableRows && !expandableRowsHideExpander && /*#__PURE__*/React__default.createElement(TableColExpander, null), columnsMemo.map(function (column) {
-    return /*#__PURE__*/React__default.createElement(TableCol, {
+  })), expandableRows && !expandableRowsHideExpander && /*#__PURE__*/React__default['default'].createElement(TableColExpander, null), columnsMemo.map(function (column) {
+    return /*#__PURE__*/React__default['default'].createElement(TableCol, {
       key: column.id,
       column: column,
       sortIcon: sortIcon
     });
-  }))), progressPending && !persistTableHead && /*#__PURE__*/React__default.createElement(ProgressWrapper, null, progressComponent), !data.length > 0 && !progressPending && /*#__PURE__*/React__default.createElement(NoDataWrapper, null, noDataComponent), progressPending && persistTableHead && /*#__PURE__*/React__default.createElement(ProgressWrapper, null, progressComponent), subHeader && /*#__PURE__*/React__default.createElement(TableSubheader, {
+  }))), progressPending && !persistTableHead && /*#__PURE__*/React__default['default'].createElement(ProgressWrapper, null, progressComponent), !data.length > 0 && !progressPending && /*#__PURE__*/React__default['default'].createElement(NoDataWrapper, null, noDataComponent), progressPending && persistTableHead && /*#__PURE__*/React__default['default'].createElement(ProgressWrapper, null, progressComponent), subHeader && /*#__PURE__*/React__default['default'].createElement(TableSubheader, {
     align: subHeaderAlign,
     wrapContent: subHeaderWrap,
     onDrop: onDropEvt
-  }, subHeaderComponent), !progressPending && data.length > 0 && /*#__PURE__*/React__default.createElement(TableBody, {
+  }, subHeaderComponent), !progressPending && data.length > 0 && /*#__PURE__*/React__default['default'].createElement(TableBody, {
     fixedHeader: fixedHeader,
     fixedHeaderScrollHeight: fixedHeaderScrollHeight,
     hasOffset: overflowY,
@@ -14546,7 +14430,8 @@ var DataTable = React.memo(function (_ref) {
     var selected = isRowSelected(row, selectedRows, keyField);
     var expanderExpander = expandableRows && expandableRowExpanded && expandableRowExpanded(row);
     var expanderDisabled = expandableRows && expandableRowDisabled && expandableRowDisabled(row);
-    return /*#__PURE__*/React__default.createElement(TableRow, {
+    var isdraggable = draggable && dragRowDisabled && dragRowDisabled(row);
+    return /*#__PURE__*/React__default['default'].createElement(TableRow, {
       id: id,
       key: id,
       keyField: keyField,
@@ -14574,7 +14459,7 @@ var DataTable = React.memo(function (_ref) {
       selected: selected,
       selectableRowsHighlight: selectableRowsHighlight,
       onChange: onChange,
-      draggable: draggable
+      draggable: isdraggable
     });
   })))))));
 });

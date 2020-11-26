@@ -34,6 +34,7 @@ const DataTable = memo(({
   pointerOnHover,
   dense,
   draggable,
+  dragRowDisabled,
   selectableRows,
   selectableRowsHighlight,
   selectableRowsNoSelectAll,
@@ -409,6 +410,10 @@ const DataTable = memo(({
                       && expandableRowDisabled
                       && expandableRowDisabled(row);
 
+                    const isdraggable = draggable
+                      && dragRowDisabled
+                      && dragRowDisabled(row);
+
                     return (
                       <TableRow
                         id={id}
@@ -438,7 +443,7 @@ const DataTable = memo(({
                         selected={selected}
                         selectableRowsHighlight={selectableRowsHighlight}
                         onChange={onChange}
-                        draggable={draggable}
+                        draggable={isdraggable}
                       />
                     );
                   })}
