@@ -14069,7 +14069,7 @@ var DataTable = /*#__PURE__*/React.memo(function (_ref) {
       pointerOnHover = _ref.pointerOnHover,
       dense = _ref.dense,
       draggable = _ref.draggable,
-      dragRowDisabled = _ref.dragRowDisabled,
+      dragRowEnabled = _ref.dragRowEnabled,
       selectableRows = _ref.selectableRows,
       selectableRowsHighlight = _ref.selectableRowsHighlight,
       selectableRowsNoSelectAll = _ref.selectableRowsNoSelectAll,
@@ -14430,7 +14430,7 @@ var DataTable = /*#__PURE__*/React.memo(function (_ref) {
     var selected = isRowSelected(row, selectedRows, keyField);
     var expanderExpander = expandableRows && expandableRowExpanded && expandableRowExpanded(row);
     var expanderDisabled = expandableRows && expandableRowDisabled && expandableRowDisabled(row);
-    var isdraggable = draggable && dragRowDisabled && dragRowDisabled(row);
+    var isdraggable = draggable && dragRowEnabled && dragRowEnabled(row);
     return /*#__PURE__*/React__default['default'].createElement(TableRow, {
       id: id,
       key: id,
