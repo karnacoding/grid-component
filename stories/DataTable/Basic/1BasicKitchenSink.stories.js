@@ -31,6 +31,10 @@ const columns = [
     sortable: true,
   },
 ];
+const LeftIcon = () =>
+  (<svg width="12" height="10" viewBox="0 0 12 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M6.83992 8.70013C6.44595 9.30984 5.55405 9.30984 5.16008 8.70013L0.996834 2.257C0.566886 1.59161 1.04453 0.714284 1.83675 0.714284L10.1633 0.714285C10.9555 0.714285 11.4331 1.59161 11.0032 2.257L6.83992 8.70013Z" fill="#023373"/>
+  </svg>);
 
 const KitchenSink = () => {
   const [selectableRows, setSelectableRows] = React.useState(false);
@@ -246,6 +250,7 @@ const KitchenSink = () => {
         fixedHeader={fixedHeader}
         fixedHeaderScrollHeight="300px"
         direction={directionValue}
+        sortIcon={<LeftIcon />}
       />
     </div>
   );

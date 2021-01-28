@@ -59,13 +59,13 @@ const TableCol = memo(({
     return null;
   }
 
-  const handleSortChange = () => {
+  const handleSortChange = (e,sortD) => {
     if (column.sortable) {
       let direction = sortDirection;
       // change sort direction only if sortColumn (currently selected column) is === the newly clicked column
       // otherwise, retain sort direction if the column is switched
       if (sortColumn === column.selector) {
-        direction = sortDirection === 'asc' ? 'desc' : 'asc';
+        direction = sortD;
       }
 
       dispatch({
@@ -88,16 +88,17 @@ const TableCol = memo(({
     }
   };
 
-  const renderNativeSortIcon = sortActive => (
+  const renderNativeSortIcon = (sortActive,sortD) => (
     <NativeSortIcon
+      onClick={(e) => handleSortChange(e,sortD)}
       column={column}
       sortActive={sortActive}
-      sortDirection={sortDirection}
+      sortDirection={sortD}
     />
   );
 
-  const renderCustomSortIcon = () => (
-    <span className={[sortDirection, '__rdt_custom_sort_icon__'].join(' ')}>
+  const renderCustomSortIcon = (dir) => (
+    <span  onClick={handleSortChange} className={[dir, '__rdt_custom_sort_icon__'].join(' ')}>
       {sortIcon}
     </span>
   );
@@ -121,18 +122,28 @@ const TableCol = memo(({
           aria-pressed={sortActive}
           tabIndex={0}
           className="rdt_TableCol_Sortable"
-          onClick={handleSortChange}
           onKeyPress={handleKeyPress}
           sortActive={sortActive}
           column={column}
         >
-          {customSortIconRight && renderCustomSortIcon()}
-          {nativeSortIconRight && renderNativeSortIcon(sortActive)}
-          <div>
+         
+         
+          <div style={{display:"flex",alignItems:"center"}}>
+            <div>
             {column.name}
+            </div>
+            <div>
+                  <div>
+                  {/* { renderCustomSortIcon('asc')} */}
+                    {renderNativeSortIcon(sortActive,'asc')}
+                  </div> 
+                  <div>
+                  {/* {renderCustomSortIcon('desc')} */}
+                  { renderNativeSortIcon(sortActive,'desc')}
+                  </div>
+            </div>
           </div>
-          {customSortIconLeft && renderCustomSortIcon()}
-          {nativeSortIconLeft && renderNativeSortIcon(sortActive)}
+          
         </ColumnSortable>
       )}
     </TableColStyle>
