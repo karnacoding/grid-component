@@ -177,6 +177,7 @@ const TableCol = memo(({ column }) => {
         >
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <div>{column.name}</div>
+            {column.sortable && (
             <div>
               <div>
                 {/* { renderCustomSortIcon('asc')} */}
@@ -187,6 +188,7 @@ const TableCol = memo(({ column }) => {
                 {renderNativeSortIcon(sortActive, 'desc')}
               </div>
             </div>
+            )}
           </div>
         </ColumnSortable>
       )}

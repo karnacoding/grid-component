@@ -12653,7 +12653,7 @@ var TableCol = /*#__PURE__*/React.memo(function (_ref4) {
       display: 'flex',
       alignItems: 'center'
     }
-  }, /*#__PURE__*/React__default['default'].createElement("div", null, column.name), /*#__PURE__*/React__default['default'].createElement("div", null, /*#__PURE__*/React__default['default'].createElement("div", null, renderNativeSortIcon(sortActive, 'asc')), /*#__PURE__*/React__default['default'].createElement("div", null, renderNativeSortIcon(sortActive, 'desc'))))));
+  }, /*#__PURE__*/React__default['default'].createElement("div", null, column.name), column.sortable && /*#__PURE__*/React__default['default'].createElement("div", null, /*#__PURE__*/React__default['default'].createElement("div", null, renderNativeSortIcon(sortActive, 'asc')), /*#__PURE__*/React__default['default'].createElement("div", null, renderNativeSortIcon(sortActive, 'desc'))))));
 });
 TableCol.propTypes = {
   column: propTypes.object.isRequired
