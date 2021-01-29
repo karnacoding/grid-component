@@ -12468,7 +12468,7 @@ TableRow.defaultProps = {
 };
 
 function _templateObject$b() {
-  var data = _taggedTemplateLiteral(["\n  padding: 2px;\n  color: inherit;\n  flex-grow: 0;\n  flex-shrink: 0;\n  ", ";\n  ", ";\n"]);
+  var data = _taggedTemplateLiteral(["\n  padding: 2px;\n  color: inherit;\n  flex-grow: 0;\n  flex-shrink: 0;\n"]);
 
   _templateObject$b = function _templateObject() {
     return data;
@@ -12476,34 +12476,35 @@ function _templateObject$b() {
 
   return data;
 }
-var Icon = styled__default['default'].span(_templateObject$b(), function (props) {
-  return props.sortActive ? 'opacity: 1' : 'opacity: 0';
-}, function (props) {
-  return props.sortDirection === 'desc' && 'transform: rotate(180deg)';
-});
+var Icon = styled__default['default'].span(_templateObject$b());
 
 var NativeSortIcon = function NativeSortIcon(_ref) {
   var sortActive = _ref.sortActive,
       sortDirection = _ref.sortDirection,
-      sortIcon = _ref.sortIcon;
+      sortIconUp = _ref.sortIconUp,
+      sortIconDown = _ref.sortIconDown,
+      onClick = _ref.onClick;
   return /*#__PURE__*/React__default['default'].createElement(Icon, {
+    onClick: onClick,
     sortActive: sortActive,
     sortDirection: sortDirection
-  }, sortIcon);
+  }, sortDirection === 'desc' ? sortIconUp : sortIconDown);
 };
 
 NativeSortIcon.propTypes = {
   sortDirection: propTypes.string.isRequired,
   sortActive: propTypes.bool,
-  sortIcon: propTypes.node
+  sortIconUp: propTypes.string.isRequired,
+  sortIconDown: propTypes.string.isRequired,
+  onClick: propTypes.func
 };
 NativeSortIcon.defaultProps = {
   sortActive: true,
-  sortIcon: /*#__PURE__*/React__default['default'].createElement(React__default['default'].Fragment, null, "\u25B2")
+  onClick: propTypes.func
 };
 
 function _templateObject2$5() {
-  var data = _taggedTemplateLiteral(["\n  display: inline-flex;\n  align-items: center;\n  height: 100%;\n  line-height: 1;\n  user-select: none;\n  ", ";\n\n  span.__rdt_custom_sort_icon__ {\n    i,\n    svg {\n      ", "; //kundan\n      color: inherit;\n      font-size: 18px !important;\n      height: 18px !important;\n      width: 18px !important;\n      backface-visibility: hidden;\n      transform-style: preserve-3d;\n      transition-duration: 125ms;\n      transition-property: transform;\n    }\n\n    &.asc i,\n    &.asc svg {\n      transform: rotate(180deg);\n    }\n  }\n\n  &:hover {\n    ", ";\n    ", ";\n\n    span,\n    span.__rdt_custom_sort_icon__ * {\n      ", ";\n    }\n  }\n"]);
+  var data = _taggedTemplateLiteral(["\n  display: inline-flex;\n  align-items: center;\n  height: 100%;\n  line-height: 1;\n  user-select: none;\n  ", ";\n  span.__rdt_custom_sort_icon__ {\n    i,\n    svg {\n      ", "; //kundan\n      color: inherit;\n      font-size: 18px !important;\n      height: 18px !important;\n      width: 18px !important;\n      backface-visibility: hidden;\n      transform-style: preserve-3d;\n      transition-duration: 125ms;\n      transition-property: transform;\n    }\n    &.asc i,\n    &.asc svg {\n      transform: rotate(180deg);\n    }\n  }\n  &:hover {\n    ", ";\n    ", ";\n    span,\n    span.__rdt_custom_sort_icon__ * {\n      ", ";\n    }\n  }\n"]);
 
   _templateObject2$5 = function _templateObject2() {
     return data;
@@ -12541,8 +12542,7 @@ var ColumnSortable = styled__default['default'].div(_templateObject2$5(), functi
   return !sortActive && column.sortable && 'opacity: 1';
 });
 var TableCol = /*#__PURE__*/React.memo(function (_ref4) {
-  var column = _ref4.column,
-      sortIcon = _ref4.sortIcon;
+  var column = _ref4.column;
 
   var _useTableContext = useTableContext(),
       dispatch = _useTableContext.dispatch,
@@ -12558,13 +12558,13 @@ var TableCol = /*#__PURE__*/React.memo(function (_ref4) {
     return null;
   }
 
-  var handleSortChange = function handleSortChange() {
+  var handleSortChange = function handleSortChange(e, sortD) {
     if (column.sortable) {
-      var direction = sortDirection; // change sort direction only if sortColumn (currently selected column) is === the newly clicked column
+      var direction = sortD; // change sort direction only if sortColumn (currently selected column) is === the newly clicked column
       // otherwise, retain sort direction if the column is switched
 
       if (sortColumn === column.selector) {
-        direction = sortDirection === 'asc' ? 'desc' : 'asc';
+        direction = sortD;
       }
 
       dispatch({
@@ -12581,31 +12581,59 @@ var TableCol = /*#__PURE__*/React.memo(function (_ref4) {
     }
   };
 
+  var sortIconUp = /*#__PURE__*/React__default['default'].createElement("svg", {
+    width: "12",
+    height: "10",
+    viewBox: "0 0 12 10",
+    fill: sortDirection === 'desc' && sortColumn === column.selector ? '#023373' : '#A8A8A8',
+    xmlns: "http://www.w3.org/2000/svg"
+  }, /*#__PURE__*/React__default['default'].createElement("path", {
+    d: "M6.83992 8.70013C6.44595 9.30984 5.55405 9.30984 5.16008 8.70013L0.996834 2.257C0.566886 1.59161 1.04453 0.714284 1.83675 0.714284L10.1633 0.714285C10.9555 0.714285 11.4331 1.59161 11.0032 2.257L6.83992 8.70013Z",
+    fill: sortDirection === 'desc' && sortColumn === column.selector ? '#023373' : '#A8A8A8'
+  }));
+  var sortIconDown = /*#__PURE__*/React__default['default'].createElement("svg", {
+    width: "12",
+    height: "10",
+    viewBox: "0 0 12 10",
+    fill: sortDirection === 'asc' && sortColumn === column.selector ? '#023373' : '#A8A8A8',
+    xmlns: "http://www.w3.org/2000/svg"
+  }, /*#__PURE__*/React__default['default'].createElement("path", {
+    d: "M5.16008 1.29987C5.55405 0.690158 6.44595 0.690158 6.83992 1.29987L11.0032 7.743C11.4331 8.40839 10.9555 9.28572 10.1633 9.28572L1.83675 9.28572C1.04453 9.28572 0.566883 8.40839 0.996831 7.743L5.16008 1.29987Z",
+    fill: sortDirection === 'asc' && sortColumn === column.selector ? '#023373' : '#A8A8A8'
+  }));
+
   var handleKeyPress = function handleKeyPress(event) {
     if (event.key === 'Enter') {
       handleSortChange();
     }
   };
 
-  var renderNativeSortIcon = function renderNativeSortIcon(sortActive) {
+  var renderNativeSortIcon = function renderNativeSortIcon(sortActive, sortD) {
     return /*#__PURE__*/React__default['default'].createElement(NativeSortIcon, {
+      onClick: function onClick(e) {
+        return handleSortChange(e, sortD);
+      },
       column: column,
       sortActive: sortActive,
-      sortDirection: sortDirection
+      sortDirection: sortD,
+      sortIconUp: sortIconUp,
+      sortIconDown: sortIconDown
     });
-  };
+  }; // const renderCustomSortIcon = dir => (
+  //   <span
+  //     onClick={handleSortChange}
+  //     className={[dir, '__rdt_custom_sort_icon__'].join(' ')}
+  //   >
+  //     {sortIcon}
+  //   </span>
+  // );
 
-  var renderCustomSortIcon = function renderCustomSortIcon() {
-    return /*#__PURE__*/React__default['default'].createElement("span", {
-      className: [sortDirection, '__rdt_custom_sort_icon__'].join(' ')
-    }, sortIcon);
-  };
 
-  var sortActive = column.sortable && sortColumn === column.selector;
-  var nativeSortIconLeft = column.sortable && !sortIcon && !column.right;
-  var nativeSortIconRight = column.sortable && !sortIcon && column.right;
-  var customSortIconLeft = column.sortable && sortIcon && !column.right;
-  var customSortIconRight = column.sortable && sortIcon && column.right;
+  var sortActive = column.sortable && sortColumn === column.selector; // const nativeSortIconLeft = column.sortable && !sortIcon && !column.right;
+  // const nativeSortIconRight = column.sortable && !sortIcon && column.right;
+  // const customSortIconLeft = column.sortable && sortIcon && !column.right;
+  // const customSortIconRight = column.sortable && sortIcon && column.right;
+
   return /*#__PURE__*/React__default['default'].createElement(TableColStyle, {
     className: "rdt_TableCol",
     column: column // required by Cell.js
@@ -12617,15 +12645,18 @@ var TableCol = /*#__PURE__*/React.memo(function (_ref4) {
     "aria-pressed": sortActive,
     tabIndex: 0,
     className: "rdt_TableCol_Sortable",
-    onClick: handleSortChange,
     onKeyPress: handleKeyPress,
     sortActive: sortActive,
     column: column
-  }, customSortIconRight && renderCustomSortIcon(), nativeSortIconRight && renderNativeSortIcon(sortActive), /*#__PURE__*/React__default['default'].createElement("div", null, column.name), customSortIconLeft && renderCustomSortIcon(), nativeSortIconLeft && renderNativeSortIcon(sortActive)));
+  }, /*#__PURE__*/React__default['default'].createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center'
+    }
+  }, /*#__PURE__*/React__default['default'].createElement("div", null, column.name), /*#__PURE__*/React__default['default'].createElement("div", null, /*#__PURE__*/React__default['default'].createElement("div", null, renderNativeSortIcon(sortActive, 'asc')), /*#__PURE__*/React__default['default'].createElement("div", null, renderNativeSortIcon(sortActive, 'desc'))))));
 });
 TableCol.propTypes = {
-  column: propTypes.object.isRequired,
-  sortIcon: propTypes.oneOfType([propTypes.bool, propTypes.object]).isRequired
+  column: propTypes.object.isRequired
 };
 
 function _templateObject$d() {

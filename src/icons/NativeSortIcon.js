@@ -8,19 +8,21 @@ const Icon = styled.span`
   flex-grow: 0;
   flex-shrink: 0;
 `;
-const NativeSortIcon = ({ sortActive, sortDirection, sortIcon, onClick,sortIconUp,sortIconDown}) => (
-  
-  <Icon onClick={onClick} sortActive={sortActive} sortDirection={sortDirection}>{sortDirection == 'desc' ? sortIconUp   : sortIconDown }</Icon>
+const NativeSortIcon = ({ sortActive, sortDirection, sortIconUp, sortIconDown, onClick }) => (
+  <Icon onClick={onClick} sortActive={sortActive} sortDirection={sortDirection}>{sortDirection === 'desc' ? sortIconUp : sortIconDown }</Icon>
 );
 
 NativeSortIcon.propTypes = {
   sortDirection: PropTypes.string.isRequired,
   sortActive: PropTypes.bool,
-  sortIcon: PropTypes.node,
+  sortIconUp: PropTypes.string.isRequired,
+  sortIconDown: PropTypes.string.isRequired,
+  onClick: PropTypes.func,
 };
 
 NativeSortIcon.defaultProps = {
   sortActive: true,
+  onClick: PropTypes.func,
 };
 
 export default NativeSortIcon;
